@@ -15,5 +15,5 @@
 ##### 3. Trying to remove ROS. ==> branch 
   + CameraPoseVisualization got removed
   + some Publishing functions got removed
-  + using **ros_things.g**
+  + using **ros_things.h**
   + need data set from EuRoc [here](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets) as ASL data format
