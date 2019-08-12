@@ -3559,7 +3559,8 @@ void FeatureTracker::rejectWithF()
 
 void FeatureTracker::readIntrinsicParameter(const string &calib_file)
 {
-    for (size_t i = 0; i < calib_file.size(); i++)
+//     for (size_t i = 0; i < calib_file.size(); i++)
+    for (size_t i = 0; i < NUM_OF_CAM; i++)
     {
         // ROS_INFO("reading paramerter of camera %s", calib_file[i].c_str());
         // camodocal::CameraPtr camera = CameraFactory::instance()->generateCameraFromYamlFile(calib_file[i]);
