@@ -12,8 +12,8 @@
   + Original package is not dependent on ROS, using original one would be fine.
 ##### 1. Merged all header files into one.
 ##### 2. Merged all src files into one + main.
-##### 3. Trying to remove ROS. ==> branch 
+##### 3. ROS Removed [Done] 
   + CameraPoseVisualization got removed
   + some Publishing functions got removed
-  + using **ros_things.g**
+  + using **ros_things.h**
   + need data set from EuRoc [here](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets) as ASL data format

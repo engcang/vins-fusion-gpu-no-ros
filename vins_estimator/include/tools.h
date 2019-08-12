@@ -1,6 +1,6 @@
 #pragma once
 
-// #include "ros_things.h"
+#include "ros_things.h"
 #include "camodocal/camera_models.h"
 
 #include <ctime>
@@ -40,15 +40,12 @@
 #include <opencv2/cudaarithm.hpp> // GPU
 #include <Eigen/Dense>
 
-#include <ros/ros.h>
-// #include <ros/assert.h>
-// #include <ros/console.h>
-#include <ceres/ceres.h>
 #include <iostream> // error
 #include <fstream>
 
-#include <std_msgs/Header.h>
-#include <std_msgs/Float32.h>
+// #include <ros/ros.h>
+// #include <std_msgs/Header.h>
+// #include <std_msgs/Float32.h>
 
 
 using namespace std;
@@ -60,6 +57,7 @@ using namespace Eigen;
 const double FOCAL_LENGTH = 460.0;
 const int WINDOW_SIZE = 10;
 const int NUM_OF_F = 1000;
+const int NUM_OF_CAM=1;
 //#define UNIT_SPHERE_ERROR
 
 extern double INIT_DEPTH;
@@ -85,7 +83,6 @@ extern double TD;
 extern int ESTIMATE_TD;
 extern int ROLLING_SHUTTER;
 extern int ROW, COL;
-extern int NUM_OF_CAM;
 extern int STEREO;
 extern int USE_IMU;
 extern int MULTIPLE_THREAD;
@@ -107,7 +104,9 @@ extern int SHOW_TRACK;
 extern int FLOW_BACK;
 extern int SHOW_TMI;
 
-void readParameters(std::string config_file);
+// void readParameters(std::string config_file);
+void readParameters(const string &config_file);
+
 
 enum SIZE_PARAMETERIZATION
 {
@@ -1151,7 +1150,8 @@ public:
     map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> trackImage(double _cur_time, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat());
     void setMask();
     void addPoints();
-    void readIntrinsicParameter(const vector<string> &calib_file);
+    // void readIntrinsicParameter(const vector<string> &calib_file);
+    void readIntrinsicParameter(const string &calib_file);
     void showUndistortion(const string &name);
     void rejectWithF();
     void undistortedPoints();
@@ -1337,80 +1337,35 @@ class Estimator
 };
 //estimator
 
-
-//cameraposevisualization
-// #include <std_msgs/ColorRGBA.h>
-// #include <visualization_msgs/Marker.h>
-// #include <visualization_msgs/MarkerArray.h>
-
-// class CameraPoseVisualization {
-// public:
-//     std::string m_marker_ns;
-
-//     CameraPoseVisualization(float r, float g, float b, float a);
-    
-//     void setImageBoundaryColor(float r, float g, float b, float a=1.0);
-//     void setOpticalCenterConnectorColor(float r, float g, float b, float a=1.0);
-//     void setScale(double s);
-//     void setLineWidth(double width);
-
-//     void add_pose(const Eigen::Vector3d& p, const Eigen::Quaterniond& q);
-//     void reset();
-
-//     void publish_by(ros::Publisher& pub, const std_msgs::Header& header);
-//     void add_edge(const Eigen::Vector3d& p0, const Eigen::Vector3d& p1);
-//     void add_loopedge(const Eigen::Vector3d& p0, const Eigen::Vector3d& p1);
-// private:
-//     std::vector<visualization_msgs::Marker> m_markers;
-//     std_msgs::ColorRGBA m_image_boundary_color;
-//     std_msgs::ColorRGBA m_optical_center_connector_color;
-//     double m_scale;
-//     double m_line_width;
-
-//     static const Eigen::Vector3d imlt;
-//     static const Eigen::Vector3d imlb;
-//     static const Eigen::Vector3d imrt;
-//     static const Eigen::Vector3d imrb;
-//     static const Eigen::Vector3d oc  ;
-//     static const Eigen::Vector3d lt0 ;
-//     static const Eigen::Vector3d lt1 ;
-//     static const Eigen::Vector3d lt2 ;
-// };
-//cameraposevisualization
-
 //visualization //TODO
-// #include <std_msgs/Bool.h> //TODO
-#include <sensor_msgs/Imu.h>
-#include <sensor_msgs/PointCloud.h>
-#include <sensor_msgs/Image.h> //TODO
-#include <sensor_msgs/image_encodings.h> //TODO
-#include <cv_bridge/cv_bridge.h> //TODO
-#include <nav_msgs/Path.h>
-#include <nav_msgs/Odometry.h>
-#include <geometry_msgs/PointStamped.h>
-//#include <visualization_msgs/Marker.h> //TODO
-//#include <tf/transform_broadcaster.h> //TODO
-//#include <fstream>
+// #include <sensor_msgs/Imu.h>
+// #include <sensor_msgs/PointCloud.h>
+// #include <sensor_msgs/Image.h> //TODO
+// #include <sensor_msgs/image_encodings.h> //TODO
+// #include <cv_bridge/cv_bridge.h> //TODO
+// #include <nav_msgs/Path.h>
+// #include <nav_msgs/Odometry.h>
+// #include <geometry_msgs/PointStamped.h>
 
-extern ros::Publisher pub_odometry;
-extern ros::Publisher pub_path, pub_pose;
+// extern ros::Publisher pub_odometry; //
+// extern ros::Publisher pub_path, pub_pose; //
 // extern ros::Publisher pub_cloud, pub_map;
 // extern ros::Publisher pub_key_poses;
 // extern ros::Publisher pub_ref_pose, pub_cur_pose;
 // extern ros::Publisher pub_key;
-extern nav_msgs::Path path;
+// extern nav_msgs::Path path;
 // extern ros::Publisher pub_pose_graph;
 extern int IMAGE_ROW, IMAGE_COL;
 
-void registerPub(ros::NodeHandle &n);
-//void pubLatestOdometry(const Eigen::Vector3d &P, const Eigen::Quaterniond &Q, const Eigen::Vector3d &V, double t);
-//void pubTrackImage(const cv::Mat &imgTrack, const double t);
+// void registerPub(ros::NodeHandle &n);
+// void pubLatestOdometry(const Eigen::Vector3d &P, const Eigen::Quaterniond &Q, const Eigen::Vector3d &V, double t);
+// void pubTrackImage(const cv::Mat &imgTrack, const double t);
 void printStatistics(const Estimator &estimator, double t);
 void pubOdometry(const Estimator &estimator, const std_msgs::Header &header);
-//void pubInitialGuess(const Estimator &estimator, const std_msgs::Header &header);
+// void pubInitialGuess(const Estimator &estimator, const std_msgs::Header &header);
 // void pubKeyPoses(const Estimator &estimator, const std_msgs::Header &header);
-//void pubCameraPose(const Estimator &estimator, const std_msgs::Header &header);
-//void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header);
+// void pubCameraPose(const Estimator &estimator, const std_msgs::Header &header);
+// void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header);
 // void pubTF(const Estimator &estimator, const std_msgs::Header &header);
 // void pubKeyframe(const Estimator &estimator);
 // void pubRelocalization(const Estimator &estimator);

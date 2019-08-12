@@ -1,53 +1,62 @@
-//#include <cv_bridge/cv_bridge.h>
 #include "tools.h"
 
+
+#define _USE_MATH_DEFINES
+#define SHOW_UNDISTORTION 0
+
+FeatureTracker trackerData[NUM_OF_CAM];
 Estimator estimator;
 
 queue<sensor_msgs::ImuConstPtr> imu_buf;
 queue<sensor_msgs::PointCloudConstPtr> feature_buf;
 queue<pair<cv::Mat, double>> img0_buf;
 queue<pair<cv::Mat, double>> img1_buf;
-// queue<sensor_msgs::ImageConstPtr> img0_buf;
-// queue<sensor_msgs::ImageConstPtr> img1_buf;
+
 std::mutex m_buf;
 
-
-void img0_callback(const sensor_msgs::ImageConstPtr &img_msg)
+// void img0_callback(const sensor_msgs::ImageConstPtr &img_msg)
+void img0_callback(const cv::Mat &img_msg, const double &t)
 {
     m_buf.lock();
-    img0_buf.push(img_msg);
+    pair<cv::Mat, double> tmp;
+    tmp.first=img_msg;
+    tmp.second=t;
+    img0_buf.push(tmp);
     m_buf.unlock();
 }
 
-void img1_callback(const sensor_msgs::ImageConstPtr &img_msg)
+void img1_callback(const cv::Mat &img_msg, const double &t)
 {
     m_buf.lock();
-    img1_buf.push(img_msg);
+    pair<cv::Mat, double> tmp;
+    tmp.first=img_msg;
+    tmp.second=t;
+    img1_buf.push(tmp);
     m_buf.unlock();
 }
 
 
-cv::Mat getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
-{
-    cv_bridge::CvImageConstPtr ptr;
-    if (img_msg->encoding == "8UC1")
-    {
-        sensor_msgs::Image img;
-        img.header = img_msg->header;
-        img.height = img_msg->height;
-        img.width = img_msg->width;
-        img.is_bigendian = img_msg->is_bigendian;
-        img.step = img_msg->step;
-        img.data = img_msg->data;
-        img.encoding = "mono8";
-        ptr = cv_bridge::toCvCopy(img, sensor_msgs::image_encodings::MONO8);
-    }
-    else
-        ptr = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::MONO8);
+// cv::Mat getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
+// {
+//     cv_bridge::CvImageConstPtr ptr;
+//     if (img_msg->encoding == "8UC1")
+//     {
+//         sensor_msgs::Image img;
+//         img.header = img_msg->header;
+//         img.height = img_msg->height;
+//         img.width = img_msg->width;
+//         img.is_bigendian = img_msg->is_bigendian;
+//         img.step = img_msg->step;
+//         img.data = img_msg->data;
+//         img.encoding = "mono8";
+//         ptr = cv_bridge::toCvCopy(img, sensor_msgs::image_encodings::MONO8);
+//     }
+//     else
+//         ptr = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::MONO8);
 
-    cv::Mat img = ptr->image.clone();
-    return img;
-}
+//     cv::Mat img = ptr->image.clone();
+//     return img;
+// }
 
 // extract images with same timestamp from two topics
 void sync_process()
@@ -62,8 +71,10 @@ void sync_process()
             m_buf.lock();
             if (!img0_buf.empty() && !img1_buf.empty())
             {
-                double time0 = img0_buf.front()->header.stamp.toSec();
-                double time1 = img1_buf.front()->header.stamp.toSec();
+                // double time0 = img0_buf.front()->header.stamp.toSec();
+                // double time1 = img1_buf.front()->header.stamp.toSec();
+                double time0 = img0_buf.front().second;
+                double time1 = img1_buf.front().second;
                 // 0.003s sync tolerance
                 if(time0 < time1 - 0.003)
                 {
@@ -77,11 +88,14 @@ void sync_process()
                 }
                 else
                 {
-                    time = img0_buf.front()->header.stamp.toSec();
-                    header = img0_buf.front()->header;
-                    image0 = getImageFromMsg(img0_buf.front());
+                    // time = img0_buf.front()->header.stamp.toSec();
+                    time = img0_buf.front().second;
+                    // header = img0_buf.front()->header;
+                    // image0 = getImageFromMsg(img0_buf.front());
+                    image0 = img0_buf.front().first;
                     img0_buf.pop();
-                    image1 = getImageFromMsg(img1_buf.front());
+                    // image1 = getImageFromMsg(img1_buf.front());
+                    image1 = img1_buf.front().first;
                     img1_buf.pop();
                     //printf("find img0 and img1\n");
                 }
@@ -98,9 +112,11 @@ void sync_process()
             m_buf.lock();
             if(!img0_buf.empty())
             {
-                time = img0_buf.front()->header.stamp.toSec();
-                header = img0_buf.front()->header;
-                image = getImageFromMsg(img0_buf.front());
+                // time = img0_buf.front()->header.stamp.toSec();
+                time = img0_buf.front().second;
+                // header = img0_buf.front()->header;
+                // image = getImageFromMsg(img0_buf.front());
+                image = img0_buf.front().first;
                 img0_buf.pop();
             }
             m_buf.unlock();
@@ -129,120 +145,153 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
     return;
 }
 
+void LoadImages(const string &strImagePath, const string &strTimesStampsPath,
+        vector<string> &strImagesFileNames, vector<double> &timeStamps)
+{
+    ifstream fTimes;
+    fTimes.open(strTimesStampsPath.c_str());
+    timeStamps.reserve(5000); //reserve vector space
+    strImagesFileNames.reserve(5000); 
+    while(!fTimes.eof())
+    {
+    string s;
+    getline(fTimes,s);
+    if(!s.empty())
+    {
+        stringstream ss;
+        ss << s;
+        strImagesFileNames.push_back(strImagePath + "/" + ss.str() + ".png");
+        double t;
+        ss >> t;
+        timeStamps.push_back(t/1e9);
+    }
+    }
+}
+/******************* load image end ***********************/
 
-// void feature_callback(const sensor_msgs::PointCloudConstPtr &feature_msg)
-// {
-//     map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> featureFrame;
-//     for (unsigned int i = 0; i < feature_msg->points.size(); i++)
-//     {
-//         int feature_id = feature_msg->channels[0].values[i];
-//         int camera_id = feature_msg->channels[1].values[i];
-//         double x = feature_msg->points[i].x;
-//         double y = feature_msg->points[i].y;
-//         double z = feature_msg->points[i].z;
-//         double p_u = feature_msg->channels[2].values[i];
-//         double p_v = feature_msg->channels[3].values[i];
-//         double velocity_x = feature_msg->channels[4].values[i];
-//         double velocity_y = feature_msg->channels[5].values[i];
-//         if(feature_msg->channels.size() > 5)
-//         {
-//             double gx = feature_msg->channels[6].values[i];
-//             double gy = feature_msg->channels[7].values[i];
-//             double gz = feature_msg->channels[8].values[i];
-//             pts_gt[feature_id] = Eigen::Vector3d(gx, gy, gz);
-//             //printf("receive pts gt %d %f %f %f\n", feature_id, gx, gy, gz);
-//         }
-//         ROS_ASSERT(z == 1);
-//         Eigen::Matrix<double, 7, 1> xyz_uv_velocity;
-//         xyz_uv_velocity << x, y, z, p_u, p_v, velocity_x, velocity_y;
-//         featureFrame[feature_id].emplace_back(camera_id,  xyz_uv_velocity);
-//     }
-//     double t = feature_msg->header.stamp.toSec();
-//     estimator.inputFeature(t, featureFrame);
-//     return;
-// }
+/******************* load IMU begin ***********************/
 
-// void restart_callback(const std_msgs::BoolConstPtr &restart_msg)
-// {
-//     if (restart_msg->data == true)
-//     {
-//         ROS_WARN("restart the estimator!");
-//         estimator.clearState();
-//         estimator.setParameter();
-//     }
-//     return;
-// }
+void LoadImus(ifstream & fImus, const ros::Time &imageTimestamp)
+{
 
-// void imu_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
-// {
-//     if (switch_msg->data == true)
-//     {
-//         //ROS_WARN("use IMU!");
-//         estimator.changeSensorType(1, STEREO);
-//     }
-//     else
-//     {
-//         //ROS_WARN("disable IMU!");
-//         estimator.changeSensorType(0, STEREO);
-//     }
-//     return;
-// }
-
-// void cam_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
-// {
-//     if (switch_msg->data == true)
-//     {
-//         //ROS_WARN("use stereo!");
-//         estimator.changeSensorType(USE_IMU, 1);
-//     }
-//     else
-//     {
-//         //ROS_WARN("use mono camera (left)!");
-//         estimator.changeSensorType(USE_IMU, 0);
-//     }
-//     return;
-// }
+    while(!fImus.eof())
+    {
+    string s;
+    getline(fImus,s);
+    if(!s.empty())
+    {
+       char c = s.at(0);
+       if(c<'0' || c>'9')      //remove first line in data.csv
+               continue;       
+        stringstream ss;
+        ss << s;
+        double tmpd;
+        int cnt=0;
+        double data[7];
+        while(ss >> tmpd)
+        {
+        data[cnt] = tmpd;
+        cnt++;
+        if(cnt ==7)
+          break;
+        if(ss.peek() == ',' || ss.peek() == ' ')
+          ss.ignore();
+        }
+        data[0] *=1e-9; //convert to second unit
+        sensor_msgs::ImuPtr imudata(new sensor_msgs::Imu);
+        imudata->angular_velocity.x = data[1];
+        imudata->angular_velocity.y = data[2];
+        imudata->angular_velocity.z = data[3];
+        imudata->linear_acceleration.x = data[4];
+        imudata->linear_acceleration.y = data[5];
+        imudata->linear_acceleration.z = data[6];
+        uint32_t  sec = data[0];
+        uint32_t nsec = (data[0]-sec)*1e9;
+        nsec = (nsec/1000)*1000+500;
+        imudata->header.stamp = ros::Time(sec,nsec);
+        imu_callback(imudata);
+        if (imudata->header.stamp > imageTimestamp)       //load all imu data produced in interval time between two consecutive frams 
+          break;
+    }
+    }
+}
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "vins_estimator");
-    ros::NodeHandle n("~");
-    // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
-
-    if(argc != 2)
+  /******************* load image begin ***********************/
+    if(argc != 5)
     {
-        printf("please intput: rosrun vins vins_node [config file] \n"
-               "for example: rosrun vins vins_node "
-               "~/catkin_ws/src/VINS-Fusion/config/euroc/euroc_stereo_imu_config.yaml \n");
-        return 1;
+    cerr << endl << "Usage: ./vins_estimator path_to_setting_file path_to_image_folder path_to_times_file path_to_imu_data_file" <<endl;
+    return 1;
     }
-
-    string config_file = argv[1];
-    printf("config_file: %s\n", argv[1]);
-
-    readParameters(config_file);
+    
+    //imu data file 
+    ifstream fImus;
+    fImus.open(argv[4]);
+    
+    cv::Mat image;
+    int ni;//num image
+    
+    //read parameters section
+    readParameters(argv[1]);
+    
     estimator.setParameter();
-
-#ifdef EIGEN_DONT_PARALLELIZE
-    // ROS_DEBUG("EIGEN_DONT_PARALLELIZE");
-    printf("EIGEN_DONT_PARALLELIZE");
-#endif
-
-    // ROS_WARN("waiting for image and imu...");
-    printf("waiting for image and imu...");
-
-    registerPub(n);
-
-    ros::Subscriber sub_imu = n.subscribe(IMU_TOPIC, 2000, imu_callback, ros::TransportHints().tcpNoDelay());
-    // ros::Subscriber sub_feature = n.subscribe("/feature_tracker/feature", 2000, feature_callback);
-    ros::Subscriber sub_img0 = n.subscribe(IMAGE0_TOPIC, 100, img0_callback);
-    ros::Subscriber sub_img1 = n.subscribe(IMAGE1_TOPIC, 100, img1_callback);
-    // ros::Subscriber sub_restart = n.subscribe("/vins_restart", 100, restart_callback);
-    // ros::Subscriber sub_imu_switch = n.subscribe("/vins_imu_switch", 100, imu_switch_callback);
-    // ros::Subscriber sub_cam_switch = n.subscribe("/vins_cam_switch", 100, cam_switch_callback);
-
-    std::thread sync_thread{sync_process};
-    ros::spin();
+    for (int i = 0; i < NUM_OF_CAM; i++)
+        trackerData[i].readIntrinsicParameter(CAM_NAMES[i]); //add
+    
+    vector<string> vStrImagesFileNames;
+    vector<double> vTimeStamps;
+    LoadImages(string(argv[2]),string(argv[3]),vStrImagesFileNames,vTimeStamps);
+    
+    int imageNum = vStrImagesFileNames.size();
+    
+    if(imageNum<=0)
+    {
+    cerr << "ERROR: Failed to load images" << endl;
+    return 1;
+    }
+    
+    std::thread measurement_process{sync_process};
+    
+     measurement_process.detach();
+   
+    for(ni=0; ni<imageNum; ni++)
+    {
+      
+      double  tframe = vTimeStamps[ni];   //timestamp
+      uint32_t  sec = tframe;
+      uint32_t nsec = (tframe-sec)*1e9;
+      nsec = (nsec/1000)*1000+500;
+      ros::Time image_timestamp = ros::Time(sec, nsec);
+       // read imu data
+      LoadImus(fImus,image_timestamp);
+       
+    //read image from file
+      image = cv::imread(vStrImagesFileNames[ni],CV_LOAD_IMAGE_UNCHANGED);
+      
+      if(image.empty())
+      {
+      cerr << endl << "Failed to load image: " << vStrImagesFileNames[ni] <<endl;
+      return 1;
+      }
+      std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+      img0_callback(image, image_timestamp.toSec());
+      std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+      double timeSpent =std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1).count();
+      
+      //wait to load the next frame image
+      double T=0;
+      if(ni < imageNum-1)
+    T = vTimeStamps[ni+1]-tframe; //interval time between two consecutive frames,unit:second
+      else if(ni>0)    //lastest frame
+    T = tframe-vTimeStamps[ni-1];
+      
+      if(timeSpent < T)
+    usleep((T-timeSpent)*1e6); //sec->us:1e6
+      else
+    cerr << endl << "process image speed too slow, larger than interval time between two consecutive frames" << endl;
+      
+    }
 
     return 0;
 }

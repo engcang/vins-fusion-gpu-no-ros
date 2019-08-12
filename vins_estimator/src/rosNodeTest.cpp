@@ -6,7 +6,7 @@
 // #include <mutex>
 // #include <ros/ros.h>
 // #include <opencv2/opencv.hpp>
-#include <cv_bridge/cv_bridge.h>
+//#include <cv_bridge/cv_bridge.h>
 #include "tools.h"
 
 Estimator estimator;
@@ -136,84 +136,10 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
 }
 
 
-// void feature_callback(const sensor_msgs::PointCloudConstPtr &feature_msg)
-// {
-//     map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> featureFrame;
-//     for (unsigned int i = 0; i < feature_msg->points.size(); i++)
-//     {
-//         int feature_id = feature_msg->channels[0].values[i];
-//         int camera_id = feature_msg->channels[1].values[i];
-//         double x = feature_msg->points[i].x;
-//         double y = feature_msg->points[i].y;
-//         double z = feature_msg->points[i].z;
-//         double p_u = feature_msg->channels[2].values[i];
-//         double p_v = feature_msg->channels[3].values[i];
-//         double velocity_x = feature_msg->channels[4].values[i];
-//         double velocity_y = feature_msg->channels[5].values[i];
-//         if(feature_msg->channels.size() > 5)
-//         {
-//             double gx = feature_msg->channels[6].values[i];
-//             double gy = feature_msg->channels[7].values[i];
-//             double gz = feature_msg->channels[8].values[i];
-//             pts_gt[feature_id] = Eigen::Vector3d(gx, gy, gz);
-//             //printf("receive pts gt %d %f %f %f\n", feature_id, gx, gy, gz);
-//         }
-//         ROS_ASSERT(z == 1);
-//         Eigen::Matrix<double, 7, 1> xyz_uv_velocity;
-//         xyz_uv_velocity << x, y, z, p_u, p_v, velocity_x, velocity_y;
-//         featureFrame[feature_id].emplace_back(camera_id,  xyz_uv_velocity);
-//     }
-//     double t = feature_msg->header.stamp.toSec();
-//     estimator.inputFeature(t, featureFrame);
-//     return;
-// }
-
-// void restart_callback(const std_msgs::BoolConstPtr &restart_msg)
-// {
-//     if (restart_msg->data == true)
-//     {
-//         ROS_WARN("restart the estimator!");
-//         estimator.clearState();
-//         estimator.setParameter();
-//     }
-//     return;
-// }
-
-// void imu_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
-// {
-//     if (switch_msg->data == true)
-//     {
-//         //ROS_WARN("use IMU!");
-//         estimator.changeSensorType(1, STEREO);
-//     }
-//     else
-//     {
-//         //ROS_WARN("disable IMU!");
-//         estimator.changeSensorType(0, STEREO);
-//     }
-//     return;
-// }
-
-// void cam_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
-// {
-//     if (switch_msg->data == true)
-//     {
-//         //ROS_WARN("use stereo!");
-//         estimator.changeSensorType(USE_IMU, 1);
-//     }
-//     else
-//     {
-//         //ROS_WARN("use mono camera (left)!");
-//         estimator.changeSensorType(USE_IMU, 0);
-//     }
-//     return;
-// }
-
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "vins_estimator");
     ros::NodeHandle n("~");
-    // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
     if(argc != 2)
     {
@@ -240,12 +166,9 @@ int main(int argc, char **argv)
     registerPub(n);
 
     ros::Subscriber sub_imu = n.subscribe(IMU_TOPIC, 2000, imu_callback, ros::TransportHints().tcpNoDelay());
-    // ros::Subscriber sub_feature = n.subscribe("/feature_tracker/feature", 2000, feature_callback);
     ros::Subscriber sub_img0 = n.subscribe(IMAGE0_TOPIC, 100, img0_callback);
     ros::Subscriber sub_img1 = n.subscribe(IMAGE1_TOPIC, 100, img1_callback);
-    // ros::Subscriber sub_restart = n.subscribe("/vins_restart", 100, restart_callback);
-    // ros::Subscriber sub_imu_switch = n.subscribe("/vins_imu_switch", 100, imu_switch_callback);
-    // ros::Subscriber sub_cam_switch = n.subscribe("/vins_cam_switch", 100, cam_switch_callback);
+
 
     std::thread sync_thread{sync_process};
     ros::spin();
