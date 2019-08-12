@@ -12,7 +12,7 @@
   + Original package is not dependent on ROS, using original one would be fine.
 ##### 1. Merged all header files into one.
 ##### 2. Merged all src files into one + main.
-##### 3. Trying to remove ROS. ==> branch 
+##### 3. Trying to remove ROS. ==> branch [here](https://github.com/engcang/vins-fusion-gpu-no-ros/tree/noros)
   + CameraPoseVisualization got removed
   + some Publishing functions got removed
   + using **ros_things.h**
