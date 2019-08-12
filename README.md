@@ -31,6 +31,10 @@
   ~~~
 
 ### EXECUTION
+  + Have to edit config.yaml file -> refer original github
+  + **show_TMI? : 1** makes node print more info.
+  + **show_track :1** makes node using cv::imshow(tracked image with dotts and arrows)
+  + Have to edit tools.h file's **NUM_OF_CAM** to edit the number of cameras
   ~~~shell
   $ cd ~/vins_gpu_ws && ./src/vins-fusion-no-ros-gpu/vins_estimator/build/vins_estimator ./src/vins-fusion-no-ros-gpu/config/mono.yaml ./data/image/left/data/ ./src/vins-fusion-no-ros-gpu/euroc_data_timestamp/MH01.txt ./data/imu/data.csv
   ~~~
