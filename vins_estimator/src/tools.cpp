@@ -25,7 +25,7 @@ std::string OUTPUT_FOLDER;
 std::string IMU_TOPIC;
 int ROW, COL;
 double TD;
-// int NUM_OF_CAM;
+int NUM_OF_CAM;
 int STEREO;
 int USE_IMU;
 int MULTIPLE_THREAD;
@@ -151,8 +151,8 @@ void readParameters(const string &config_file)
         TIC.push_back(T.block<3, 1>(0, 3));
     } 
     
-    // NUM_OF_CAM = fsSettings["num_of_cam"];
-    // printf("camera number %d\n", NUM_OF_CAM);
+    NUM_OF_CAM = fsSettings["num_of_cam"];
+    printf("camera number %d\n", NUM_OF_CAM);
 
     if(NUM_OF_CAM != 1 && NUM_OF_CAM != 2)
     {

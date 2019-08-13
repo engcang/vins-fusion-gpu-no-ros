@@ -3,7 +3,7 @@
 #common parameters
 #support: 1 imu 1 cam; 1 imu 2 cam: 2 cam; 
 imu: 1         
-num_of_cam: 2  
+num_of_cam: 2
 
 imu_topic: "/imu0"
 image0_topic: "/cam0/image_raw"
@@ -50,7 +50,7 @@ freq: 30                # frequence (Hz) of publish tracking result. At least 10
 F_threshold: 1.0        # ransac threshold (pixel)
 show_track: 1           # publish tracking image as topic
 show_TMI? : 0
-fisheye : 1
+fisheye : 0
 fisheye_mask_path : "/home/usrg/fisheye_mask.jpg"
 flow_back: 1            # perform forward and backward optical flow to improve feature tracking accuracy
 
