@@ -4,8 +4,8 @@
 #define _USE_MATH_DEFINES
 #define SHOW_UNDISTORTION 0
 
-FeatureTracker trackerData[NUM_OF_CAM];
-Estimator estimator;
+// static FeatureTracker trackerData[NUM_OF_CAM];
+static Estimator estimator;
 
 queue<sensor_msgs::ImuConstPtr> imu_buf;
 queue<sensor_msgs::PointCloudConstPtr> feature_buf;
@@ -124,7 +124,7 @@ void sync_process()
                 estimator.inputImage(time, image);
         }
 
-        std::chrono::milliseconds dura(2);
+        std::chrono::milliseconds dura(1);
         std::this_thread::sleep_for(dura);
     }
 }
@@ -219,79 +219,163 @@ void LoadImus(ifstream & fImus, const ros::Time &imageTimestamp)
 int main(int argc, char **argv)
 {
   /******************* load image begin ***********************/
-    if(argc != 5)
+    if(argc != 5 && argc!=6)
     {
-    cerr << endl << "Usage: ./vins_estimator path_to_setting_file path_to_image_folder path_to_times_file path_to_imu_data_file" <<endl;
-    return 1;
+        cout << argc << endl;
+        cerr << endl << "Usage: ./vins_estimator path_to_setting_file path_to_image_folder path_to_times_file path_to_imu_data_file" <<endl;
+        return 1;
     }
-    
-    //imu data file 
-    ifstream fImus;
-    fImus.open(argv[4]);
-    
-    cv::Mat image;
-    int ni;//num image
     
     //read parameters section
     readParameters(argv[1]);
-    
     estimator.setParameter();
-    for (int i = 0; i < NUM_OF_CAM; i++)
-        trackerData[i].readIntrinsicParameter(CAM_NAMES[i]); //add
-    
-    vector<string> vStrImagesFileNames;
-    vector<double> vTimeStamps;
-    LoadImages(string(argv[2]),string(argv[3]),vStrImagesFileNames,vTimeStamps);
-    
-    int imageNum = vStrImagesFileNames.size();
-    
-    if(imageNum<=0)
+
+    // for (int i = 0; i < NUM_OF_CAM; i++)
+        // trackerData[i].readIntrinsicParameter(CAM_NAMES[i]); //add
+
+
+
+
+
+    if (!STEREO)
     {
-    cerr << "ERROR: Failed to load images" << endl;
-    return 1;
-    }
+        //imu data file 
+        ifstream fImus;
+        fImus.open(argv[4]);
+
+        cv::Mat image;
+        int ni;//num image
     
-    std::thread measurement_process{sync_process};
-    
-     measurement_process.detach();
-   
-    for(ni=0; ni<imageNum; ni++)
-    {
-      
-      double  tframe = vTimeStamps[ni];   //timestamp
-      uint32_t  sec = tframe;
-      uint32_t nsec = (tframe-sec)*1e9;
-      nsec = (nsec/1000)*1000+500;
-      ros::Time image_timestamp = ros::Time(sec, nsec);
-       // read imu data
-      LoadImus(fImus,image_timestamp);
+        vector<string> vStrImagesFileNames;
+        vector<double> vTimeStamps;
+        LoadImages(string(argv[2]),string(argv[3]),vStrImagesFileNames,vTimeStamps);
+        
+        int imageNum = vStrImagesFileNames.size();
+        
+        if(imageNum<=0)
+        {
+        cerr << "ERROR: Failed to load images" << endl;
+        return 1;
+        }
+        
+        std::thread measurement_process{sync_process};
+        
+         measurement_process.detach();
        
-    //read image from file
-      image = cv::imread(vStrImagesFileNames[ni],CV_LOAD_IMAGE_UNCHANGED);
-      
-      if(image.empty())
-      {
-      cerr << endl << "Failed to load image: " << vStrImagesFileNames[ni] <<endl;
-      return 1;
-      }
-      std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-      img0_callback(image, image_timestamp.toSec());
-      std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-      double timeSpent =std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1).count();
-      
-      //wait to load the next frame image
-      double T=0;
-      if(ni < imageNum-1)
-    T = vTimeStamps[ni+1]-tframe; //interval time between two consecutive frames,unit:second
-      else if(ni>0)    //lastest frame
-    T = tframe-vTimeStamps[ni-1];
-      
-      if(timeSpent < T)
-    usleep((T-timeSpent)*1e6); //sec->us:1e6
-      else
-    cerr << endl << "process image speed too slow, larger than interval time between two consecutive frames" << endl;
-      
+        for(ni=0; ni<imageNum; ni++)
+        {
+
+          double  tframe = vTimeStamps[ni];   //timestamp
+          uint32_t  sec = tframe;
+          uint32_t nsec = (tframe-sec)*1e9;
+          nsec = (nsec/1000)*1000+500;
+          ros::Time image_timestamp = ros::Time(sec, nsec);
+           // read imu data
+          LoadImus(fImus,image_timestamp);
+           
+        //read image from file
+          image = cv::imread(vStrImagesFileNames[ni],CV_LOAD_IMAGE_UNCHANGED);
+          
+          if(image.empty())
+          {
+          cerr << endl << "Failed to load image: " << vStrImagesFileNames[ni] <<endl;
+          return 1;
+          }
+          std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+          img0_callback(image, image_timestamp.toSec());
+          std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+          double timeSpent =std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1).count();
+          
+          //wait to load the next frame image
+          double T=0;
+          if(ni < imageNum-1)
+        T = vTimeStamps[ni+1]-tframe; //interval time between two consecutive frames,unit:second
+          else if(ni>0)    //lastest frame
+        T = tframe-vTimeStamps[ni-1];
+          
+          if(timeSpent < T)
+        usleep((T-timeSpent)*1e6); //sec->us:1e6
+          else
+        cerr << endl << "process image speed too slow, larger than interval time between two consecutive frames" << endl;
+          
+        }
+    }
+    else if(STEREO)
+    {
+                //imu data file 
+        ifstream fImus;
+        fImus.open(argv[5]); // check
+
+        cv::Mat image;
+        cv::Mat image2;
+        int ni;//num image
+
+        vector<string> vStrImagesFileNames;
+        vector<string> vStrImagesFileNames2 ;
+        vector<double> vTimeStamps;
+        vector<double> vTimeStamps2;
+        LoadImages(string(argv[2]),string(argv[4]),vStrImagesFileNames,vTimeStamps); //left
+        LoadImages(string(argv[3]),string(argv[4]),vStrImagesFileNames2,vTimeStamps2); //right
+        
+        int tmp_imageNum = vStrImagesFileNames.size();
+        int tmp_imageNum2 = vStrImagesFileNames2.size();
+        int imageNum = (tmp_imageNum<tmp_imageNum2)?tmp_imageNum2:tmp_imageNum; // I am good at coding. hahaha
+
+        
+        if(imageNum<=0)
+        {
+            cerr << "ERROR: Failed to load images" << endl;
+            return 1;
+        }
+        
+        std::thread measurement_process{sync_process};
+        
+        measurement_process.detach();
+       
+        for(ni=0; ni<imageNum; ni++)
+        {
+
+          double  tframe = vTimeStamps[ni];   //timestamp
+          uint32_t  sec = tframe;
+          uint32_t nsec = (tframe-sec)*1e9;
+          nsec = (nsec/1000)*1000+500;
+          ros::Time image_timestamp = ros::Time(sec, nsec);
+          double  tframe2 = vTimeStamps2[ni];   //timestamp
+          uint32_t  sec2 = tframe2;
+          uint32_t nsec2 = (tframe2-sec2)*1e9;
+          nsec2 = (nsec2/1000)*1000+500;
+          ros::Time image_timestamp2 = ros::Time(sec2, nsec2);
+          // read imu data
+          LoadImus(fImus,image_timestamp); //TODO
+           
+          //read image from file
+          image = cv::imread(vStrImagesFileNames[ni],CV_LOAD_IMAGE_UNCHANGED);
+          image2 = cv::imread(vStrImagesFileNames2[ni],CV_LOAD_IMAGE_UNCHANGED);
+          
+          if(image.empty() or image2.empty())
+          {
+              cerr << endl << "Failed to load image: " << vStrImagesFileNames[ni] <<endl;
+              return 1;
+          }
+          std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+          img0_callback(image, image_timestamp.toSec());
+          img1_callback(image2, image_timestamp2.toSec());
+          std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+          double timeSpent =std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1).count();
+          
+          //wait to load the next frame image
+          double T=0;
+          if(ni < imageNum-1)
+            T = vTimeStamps[ni+1]-tframe; //interval time between two consecutive frames,unit:second
+          else if(ni>0)    //lastest frame
+            T = tframe-vTimeStamps[ni-1];
+          
+          if(timeSpent < T)
+            usleep((T-timeSpent)*1e6); //sec->us:1e6
+          else
+        cerr << endl << "process image speed too slow, larger than interval time between two consecutive frames" << endl;
     }
 
     return 0;
+}
 }

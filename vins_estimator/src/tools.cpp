@@ -35,7 +35,7 @@ int PUB_RECTIFY;
 Eigen::Matrix3d rectify_R_left;
 Eigen::Matrix3d rectify_R_right;
 map<int, Eigen::Vector3d> pts_gt;
-std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
+// std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
 std::string FISHEYE_MASK;
 std::vector<std::string> CAM_NAMES;
 int MAX_CNT;
@@ -43,6 +43,7 @@ int MIN_DIST;
 double F_THRESHOLD;
 int SHOW_TRACK;
 int SHOW_TMI;
+int FISHEYE;
 int FLOW_BACK;
 
 
@@ -82,13 +83,15 @@ void readParameters(const string &config_file)
         std::cerr << "ERROR: Wrong path to settings" << std::endl;
     }
 
-    fsSettings["image0_topic"] >> IMAGE0_TOPIC;
-    fsSettings["image1_topic"] >> IMAGE1_TOPIC;
+    // fsSettings["image0_topic"] >> IMAGE0_TOPIC;
+    // fsSettings["image1_topic"] >> IMAGE1_TOPIC;
     MAX_CNT = fsSettings["max_cnt"];
     MIN_DIST = fsSettings["min_dist"];
     F_THRESHOLD = fsSettings["F_threshold"];
     SHOW_TRACK = fsSettings["show_track"];
     SHOW_TMI = fsSettings["show_TMI?"];
+    FISHEYE = fsSettings["fisheye"]; // added
+    fsSettings["fisheye_mask_path"] >> FISHEYE_MASK; //added
     FLOW_BACK = fsSettings["flow_back"];
 
     MULTIPLE_THREAD = fsSettings["multiple_thread"];
@@ -3082,7 +3085,11 @@ FeatureTracker::FeatureTracker()
 
 void FeatureTracker::setMask()
 {
-    mask = cv::Mat(row, col, CV_8UC1, cv::Scalar(255));
+    if(FISHEYE) // Added
+        {fisheye_mask = cv::imread(FISHEYE_MASK, 0); // Added
+        mask = fisheye_mask.clone();}
+    else
+        mask = cv::Mat(row, col, CV_8UC1, cv::Scalar(255));
 
     // prefer to keep features that are tracked for long time
     vector<pair<int, pair<cv::Point2f, int>>> cnt_pts_id;
@@ -3557,14 +3564,15 @@ void FeatureTracker::rejectWithF()
     }
 }
 
-void FeatureTracker::readIntrinsicParameter(const string &calib_file)
+// void FeatureTracker::readIntrinsicParameter(const string &calib_file)
+void FeatureTracker::readIntrinsicParameter(const vector<string> &calib_file)
 {
-//     for (size_t i = 0; i < calib_file.size(); i++)
-    for (size_t i = 0; i < NUM_OF_CAM; i++)
+    for (size_t i = 0; i < calib_file.size(); i++)
+    // for (size_t i = 0; i < NUM_OF_CAM; i++)
     {
         // ROS_INFO("reading paramerter of camera %s", calib_file[i].c_str());
         // camodocal::CameraPtr camera = CameraFactory::instance()->generateCameraFromYamlFile(calib_file[i]);
-        camodocal::CameraPtr camera = CameraFactory::instance()->generateCameraFromYamlFile(calib_file);
+        camodocal::CameraPtr camera = CameraFactory::instance()->generateCameraFromYamlFile(calib_file[i]);
         m_camera.push_back(camera);
     }
     if (calib_file.size() == 2)
@@ -3854,7 +3862,7 @@ void Estimator::setParameter()
         tic[i] = TIC[i];
         ric[i] = RIC[i];
         cout << " exitrinsic cam " << i << endl  << ric[i] << endl << tic[i].transpose() << endl;
-        featureTracker.readIntrinsicParameter(CAM_NAMES[i]);
+        // featureTracker.readIntrinsicParameter(CAM_NAMES[i]);
     }
     f_manager.setRic(ric);
     ProjectionTwoFrameOneCamFactor::sqrt_info = FOCAL_LENGTH / 1.5 * Matrix2d::Identity();
@@ -3863,7 +3871,7 @@ void Estimator::setParameter()
     td = TD;
     g = G;
     cout << "set g " << g.transpose() << endl;
-    // featureTracker.readIntrinsicParameter(CAM_NAMES[i]); //TODO
+    featureTracker.readIntrinsicParameter(CAM_NAMES); //TODO
 
     std::cout << "MULTIPLE_THREAD is " << MULTIPLE_THREAD << '\n';
     if (MULTIPLE_THREAD && !initThreadFlag)

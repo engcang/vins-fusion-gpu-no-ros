@@ -57,7 +57,7 @@ using namespace Eigen;
 const double FOCAL_LENGTH = 460.0;
 const int WINDOW_SIZE = 10;
 const int NUM_OF_F = 1000;
-const int NUM_OF_CAM=1;
+const int NUM_OF_CAM=2;
 //#define UNIT_SPHERE_ERROR
 
 extern double INIT_DEPTH;
@@ -94,7 +94,7 @@ extern Eigen::Matrix3d rectify_R_right;
 // pts_gt for debug purpose;
 extern map<int, Eigen::Vector3d> pts_gt;
 
-extern std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
+// extern std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
 extern std::string FISHEYE_MASK;
 extern std::vector<std::string> CAM_NAMES;
 extern int MAX_CNT;
@@ -102,7 +102,8 @@ extern int MIN_DIST;
 extern double F_THRESHOLD;
 extern int SHOW_TRACK;
 extern int FLOW_BACK;
-extern int SHOW_TMI;
+extern int SHOW_TMI; //added
+extern int FISHEYE; //added
 
 // void readParameters(std::string config_file);
 void readParameters(const string &config_file);
@@ -1150,8 +1151,8 @@ public:
     map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> trackImage(double _cur_time, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat());
     void setMask();
     void addPoints();
-    // void readIntrinsicParameter(const vector<string> &calib_file);
-    void readIntrinsicParameter(const string &calib_file);
+    void readIntrinsicParameter(const vector<string> &calib_file);
+    // void readIntrinsicParameter(const string &calib_file);
     void showUndistortion(const string &name);
     void rejectWithF();
     void undistortedPoints();

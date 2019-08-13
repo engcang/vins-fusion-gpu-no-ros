@@ -34,7 +34,16 @@
   + Have to edit config.yaml file -> refer original github
   + **show_TMI? : 1** makes node print more info.
   + **show_track :1** makes node using cv::imshow(tracked image with dotts and arrows)
-  + Have to edit tools.h file's **NUM_OF_CAM** to edit the number of cameras
   ~~~shell
   $ cd ~/vins_gpu_ws && ./src/vins-fusion-no-ros-gpu/vins_estimator/build/vins_estimator ./src/vins-fusion-no-ros-gpu/config/mono.yaml ./data/image/left/data/ ./src/vins-fusion-no-ros-gpu/euroc_data_timestamp/MH01.txt ./data/imu/data.csv
+  ~~~
+
+<br>
+
+### Update 19.08.13
+  + supports **fish_eye** as supported in [VINS-Mono](https://github.com/HKUST-Aerial-Robotics/VINS-Mono) , even not supported in VINS-Fusion ROS version 
+  + supports **stereo** for dataset
+  + Have to edit tools.h file's **NUM_OF_CAM** to edit the number of cameras
+  ~~~shell
+  $ cd ~/vins_gpu_ws && ./src/vins-fusion-no-ros-gpu/vins_estimator/build/vins_estimator ./src/vins-fusion-no-ros-gpu/config/stereo.yaml ./data/image/left/data/ ./data/image/right/data ./src/vins-fusion-no-ros-gpu/euroc_data_timestamp/MH01.txt ./data/imu/data.csv
   ~~~
