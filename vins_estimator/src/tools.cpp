@@ -33,6 +33,7 @@ int USE_GPU;
 int USE_GPU_ACC_FLOW;
 map<int, Eigen::Vector3d> pts_gt;
 std::string FISHEYE_MASK;
+cv::Mat fisheye_mask;
 std::vector<std::string> CAM_NAMES;
 int MAX_CNT;
 int MIN_DIST;
@@ -64,7 +65,9 @@ void readParameters(const string &config_file)
     SHOW_TRACK = fsSettings["show_track"];
     SHOW_TMI = fsSettings["show_TMI?"];
     FISHEYE = fsSettings["fisheye"]; // added
-    fsSettings["fisheye_mask_path"] >> FISHEYE_MASK; //added
+    if (FISHEYE){
+        fsSettings["fisheye_mask_path"] >> FISHEYE_MASK; //added
+        fisheye_mask=cv::imread(FISHEYE_MASK,0);}
     FLOW_BACK = fsSettings["flow_back"];
 
     MULTIPLE_THREAD = fsSettings["multiple_thread"];
@@ -3039,7 +3042,6 @@ FeatureTracker::FeatureTracker()
 void FeatureTracker::setMask()
 {
     if(FISHEYE) // Added
-        {fisheye_mask = cv::imread(FISHEYE_MASK, 0); // Added
         mask = fisheye_mask.clone();}
     else
         mask = cv::Mat(row, col, CV_8UC1, cv::Scalar(255));

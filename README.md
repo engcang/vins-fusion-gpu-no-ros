@@ -49,3 +49,4 @@
 
 ### Update 19.09.18
   + DEBUG mode supports with **SHOW_TMI** parameter in config.yaml file
+  + FISHEYE mask reading method changed.
