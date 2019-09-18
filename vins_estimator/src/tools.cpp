@@ -31,11 +31,7 @@ int USE_IMU;
 int MULTIPLE_THREAD;
 int USE_GPU;
 int USE_GPU_ACC_FLOW;
-int PUB_RECTIFY;
-Eigen::Matrix3d rectify_R_left;
-Eigen::Matrix3d rectify_R_right;
 map<int, Eigen::Vector3d> pts_gt;
-// std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
 std::string FISHEYE_MASK;
 std::vector<std::string> CAM_NAMES;
 int MAX_CNT;
@@ -46,32 +42,11 @@ int SHOW_TMI;
 int FISHEYE;
 int FLOW_BACK;
 
-
-// template <typename T>
-// T readParam(ros::NodeHandle &n, std::string name)
-// {
-//     T ans;
-//     if (n.getParam(name, ans))
-//     {
-//         std::cout << "Loaded " << name << ": " << ans << endl;
-//         // ROS_INFO_STREAM("Loaded " << name << ": " << ans);
-//     }
-//     else
-//     {
-//         // ROS_ERROR_STREAM("Failed to load " << name);
-//         std::cout << "ERRORRRR : Failed to load " << name << endl;
-//         n.shutdown();
-//     }
-//     return ans;
-// }
-
 void readParameters(const string &config_file)
 {
     FILE *fh = fopen(config_file.c_str(),"r");
     if(fh == NULL){
-        // ROS_WARN("config_file dosen't exist; wrong config_file path");
         printf("config_file dosen't exist; wrong config_file path \n");
-        // ROS_BREAK();
         abort();
         return;          
     }
@@ -83,8 +58,6 @@ void readParameters(const string &config_file)
         std::cerr << "ERROR: Wrong path to settings" << std::endl;
     }
 
-    // fsSettings["image0_topic"] >> IMAGE0_TOPIC;
-    // fsSettings["image1_topic"] >> IMAGE1_TOPIC;
     MAX_CNT = fsSettings["max_cnt"];
     MIN_DIST = fsSettings["min_dist"];
     F_THRESHOLD = fsSettings["F_threshold"];
@@ -103,8 +76,6 @@ void readParameters(const string &config_file)
     printf("USE_IMU: %d\n", USE_IMU);
     if(USE_IMU)
     {
-        fsSettings["imu_topic"] >> IMU_TOPIC;
-        printf("IMU_TOPIC: %s\n", IMU_TOPIC.c_str());
         ACC_N = fsSettings["acc_n"];
         ACC_W = fsSettings["acc_w"];
         GYR_N = fsSettings["gyr_n"];
@@ -126,7 +97,6 @@ void readParameters(const string &config_file)
     ESTIMATE_EXTRINSIC = fsSettings["estimate_extrinsic"];
     if (ESTIMATE_EXTRINSIC == 2)
     {
-        // ROS_WARN("have no prior about extrinsic param, calibrate extrinsic param");
         RIC.push_back(Eigen::Matrix3d::Identity());
         TIC.push_back(Eigen::Vector3d::Zero());
         EX_CALIB_RESULT_PATH = OUTPUT_FOLDER + "/extrinsic_parameter.csv";
@@ -135,12 +105,10 @@ void readParameters(const string &config_file)
     {
         if ( ESTIMATE_EXTRINSIC == 1)
         {
-            // ROS_WARN(" Optimize extrinsic param around initial guess!");
             printf(" Optimize extrinsic param around initial guess! \n");
             EX_CALIB_RESULT_PATH = OUTPUT_FOLDER + "/extrinsic_parameter.csv";
         }
         if (ESTIMATE_EXTRINSIC == 0)
-            // ROS_WARN(" fix extrinsic param ");
             printf(" fix extrinsic param \n");
 
         cv::Mat cv_T;
@@ -175,7 +143,6 @@ void readParameters(const string &config_file)
         std::string cam1Calib;
         fsSettings["cam1_calib"] >> cam1Calib;
         std::string cam1Path = configPath + "/" + cam1Calib; 
-        //printf("%s cam1 path\n", cam1Path.c_str() );
         CAM_NAMES.push_back(cam1Path);
         
         cv::Mat cv_T;
@@ -184,7 +151,6 @@ void readParameters(const string &config_file)
         cv::cv2eigen(cv_T, T);
         RIC.push_back(T.block<3, 3>(0, 0));
         TIC.push_back(T.block<3, 1>(0, 3));
-        fsSettings["publish_rectify"] >> PUB_RECTIFY;
     }
 
     INIT_DEPTH = 5.0;
@@ -194,31 +160,18 @@ void readParameters(const string &config_file)
     TD = fsSettings["td"];
     ESTIMATE_TD = fsSettings["estimate_td"];
     if (ESTIMATE_TD)
-        // ROS_INFO_STREAM("Unsynchronized sensors, online estimate time offset, initial td: " << TD);
         std::cout << "Unsynchronized sensors, online estimate time offset, initial td: " << TD << endl;
     else
-        // ROS_INFO_STREAM("Synchronized sensors, fix time offset: " << TD);
         std::cout << "Synchronized sensors, fix time offset: " << TD << endl;
 
     ROW = fsSettings["image_height"];
     COL = fsSettings["image_width"];
-    // ROS_INFO("ROW: %d COL: %d ", ROW, COL);
 
     if(!USE_IMU)
     {
         ESTIMATE_EXTRINSIC = 0;
         ESTIMATE_TD = 0;
         printf("no imu, fix extrinsic param; no time offset calibration\n");
-    }
-    if(PUB_RECTIFY)
-    {
-        cv::Mat rectify_left;
-        cv::Mat rectify_right;
-        fsSettings["cam0_rectify"] >> rectify_left;
-        fsSettings["cam1_rectify"] >> rectify_right;
-        cv::cv2eigen(rectify_left, rectify_R_left);
-        cv::cv2eigen(rectify_right, rectify_R_right);
-
     }
     fsSettings.release();
 }
@@ -267,11 +220,8 @@ int FeatureManager::getFeatureCount()
 
 bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)
 {
-    // ROS_DEBUG("input feature: %d", (int)image.size());
-    // ROS_DEBUG("num of feature: %d", getFeatureCount());
     if (SHOW_TMI)
-    printf("input feature: %d => num of feature: %d \n", (int)image.size(), getFeatureCount());
-    // printf("num of feature: %d \n", getFeatureCount());
+        printf("input feature: %d => num of feature: %d \n", (int)image.size(), getFeatureCount());
 
     double parallax_sum = 0;
     int parallax_num = 0;
@@ -331,8 +281,10 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     }
     else
     {
-        // ROS_DEBUG("parallax_sum: %lf, parallax_num: %d", parallax_sum, parallax_num);
-        // ROS_DEBUG("current parallax: %lf", parallax_sum / parallax_num * FOCAL_LENGTH);
+
+        if(SHOW_TMI){
+            printf("parallax_sum: %lf, parallax_num: %d \n", parallax_sum, parallax_num);
+            printf("current parallax: %lf \n", parallax_sum / parallax_num * FOCAL_LENGTH);}
         last_average_parallax = parallax_sum / parallax_num * FOCAL_LENGTH;
         return parallax_sum / parallax_num >= MIN_PARALLAX;
     }
@@ -369,7 +321,6 @@ void FeatureManager::setDepth(const VectorXd &x)
             continue;
 
         it_per_id.estimated_depth = 1.0 / x(++feature_index);
-        //ROS_INFO("feature id %d , start_frame %d, depth %f ", it_per_id->feature_id, it_per_id-> start_frame, it_per_id->estimated_depth);
         if (it_per_id.estimated_depth < 0)
         {
             it_per_id.solve_flag = 2;
@@ -1005,8 +956,9 @@ void MarginalizationInfo::marginalize()
         A += threadsstruct[i].A;
         b += threadsstruct[i].b;
     }
-    //ROS_DEBUG("thread summing up costs %f ms", t_thread_summing.toc());
-    //ROS_INFO("A diff %f , b diff %f ", (A - tmp_A).sum(), (b - tmp_b).sum());
+        // if(SHOW_TMI){
+        //     printf("thread summing up costs %f ms", t_thread_summing.toc());
+        //     printf("A diff %f , b diff %f ", (A - tmp_A).sum(), (b - tmp_b).sum());}
 
 
     //TODO
@@ -1146,7 +1098,7 @@ void solveGyroscopeBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs)
         b += tmp_A.transpose() * tmp_b;
     }
     delta_bg = A.ldlt().solve(b);
-    // ROS_WARN_STREAM("gyroscope bias initial calibration " << delta_bg.transpose());
+
     std::cout << "gyroscope bias initial calibration " << delta_bg.transpose() << endl;
 
     for (int i = 0; i <= WINDOW_SIZE; i++)
@@ -1301,11 +1253,10 @@ bool LinearAlignment(map<double, ImageFrame> &all_image_frame, Vector3d &g, Vect
     b = b * 1000.0;
     x = A.ldlt().solve(b);
     double s = x(n_state - 1) / 100.0;
-    // ROS_DEBUG("estimated scale: %f", s);
-    printf("estimated scaled: %f \n",s);
     g = x.segment<3>(n_state - 4);
-    // ROS_DEBUG_STREAM(" result g     " << g.norm() << " " << g.transpose());
-    std::cout << " result g     " << g.norm() << " " << g.transpose() << endl;;
+    if(SHOW_TMI){
+        printf("estimated scaled: %f \n",s);
+        std::cout << " result g     " << g.norm() << " " << g.transpose() << endl;}
     if(fabs(g.norm() - G.norm()) > 0.5 || s < 0)
     {
         return false;
@@ -1314,8 +1265,8 @@ bool LinearAlignment(map<double, ImageFrame> &all_image_frame, Vector3d &g, Vect
     RefineGravity(all_image_frame, g, x);
     s = (x.tail<1>())(0) / 100.0;
     (x.tail<1>())(0) = s;
-    // ROS_DEBUG_STREAM(" refine     " << g.norm() << " " << g.transpose());
-    std::cout << " refine     " << g.norm() << " " << g.transpose() << endl;
+    if(SHOW_TMI)
+        std::cout << " refine     " << g.norm() << " " << g.transpose() << endl;
     if(s < 0.0 )
         return false;   
     else
@@ -1357,7 +1308,9 @@ bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> c
         Quaterniond r2(Rc_g[i]);
 
         double angular_distance = 180 / M_PI * r1.angularDistance(r2);
-        // ROS_DEBUG("%d %f", i, angular_distance);
+        
+        if(SHOW_TMI)
+            printf("%d %f", i, angular_distance);
 
         double huber = angular_distance > 5.0 ? 5.0 / angular_distance : 1.0;
         ++sum_ok;
@@ -1452,8 +1405,8 @@ double InitialEXRotation::testTriangulation(const vector<cv::Point2f> &l,
         if (p_3d_l(2) > 0 && p_3d_r(2) > 0)
             front_count++;
     }
-    // ROS_DEBUG("MotionEstimator: %f", 1.0 * front_count / pointcloud.cols);
-    printf("MotionEstimator: %f \n", 1.0 * front_count / pointcloud.cols);
+    if(SHOW_TMI)
+        printf("MotionEstimator: %f \n", 1.0 * front_count / pointcloud.cols);
     return 1.0 * front_count / pointcloud.cols;
 }
 
@@ -3291,9 +3244,10 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
         reduceVector(cur_pts, status);
         reduceVector(ids, status);
         reduceVector(track_cnt, status);
-        // ROS_DEBUG("temporal optical flow costs: %fms", t_o.toc());
-        
-        //printf("track cnt %d\n", (int)ids.size());
+        // if(SHOW_TMI)
+            // printf("temporal optical flow costs: %fms", t_o.toc());
+        if(SHOW_TMI)
+            printf("track cnt %d\n", (int)ids.size());
     }
 
     for (auto &n : track_cnt)
@@ -3302,12 +3256,13 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
     if (1)
     {
         //rejectWithF();
-        // ROS_DEBUG("set mask begins");
+        if(SHOW_TMI)
+            printf("set mask begins");
         TicToc t_m;
         setMask();
-        // ROS_DEBUG("set mask costs %fms", t_m.toc());
-        // printf("set mask costs %fms\n", t_m.toc());
-        // ROS_DEBUG("detect feature begins");
+        if(SHOW_TMI){
+            printf("set mask costs %fms", t_m.toc());
+            printf("detect feature begins");}
         
         int n_max_cnt = MAX_CNT - static_cast<int>(cur_pts.size());
         if(!USE_GPU)
@@ -3329,8 +3284,9 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
             // printf("total point from non-gpu: %d\n",sum_n);
         }
         
-        // ROS_DEBUG("detect feature costs: %fms", t_t.toc());
-        // printf("good feature to track costs: %fms\n", t_t.toc());
+        // if(SHOW_TMI){
+            // printf("detect feature costs: %fms", t_t.toc());
+            // printf("good feature to track costs: %fms\n", t_t.toc());}
         else
         {
             if (n_max_cnt > 0)
@@ -3360,12 +3316,12 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
             else 
                 n_pts.clear();
         }
-
-        // ROS_DEBUG("add feature begins");
+        if(SHOW_TMI)
+            printf("add feature begins");
         TicToc t_a;
         addPoints();
-        // ROS_DEBUG("selectFeature costs: %fms", t_a.toc());
-        // printf("selectFeature costs: %fms\n", t_a.toc());
+        if(SHOW_TMI)
+            printf("selectFeature costs: %fms\n", t_a.toc());
     }
 
     cur_un_pts = undistortedPts(cur_pts, m_camera[0]);
@@ -3532,7 +3488,8 @@ void FeatureTracker::rejectWithF()
 {
     if (cur_pts.size() >= 8)
     {
-        // ROS_DEBUG("FM ransac begins");
+        if(SHOW_TMI)
+            printf("FM ransac begins");
         TicToc t_f;
         vector<cv::Point2f> un_cur_pts(cur_pts.size()), un_prev_pts(prev_pts.size());
         for (unsigned int i = 0; i < cur_pts.size(); i++)
@@ -3557,10 +3514,10 @@ void FeatureTracker::rejectWithF()
         reduceVector(cur_un_pts, status);
         reduceVector(ids, status);
         reduceVector(track_cnt, status);
-        // ROS_DEBUG("FM ransac: %d -> %lu: %f", size_a, cur_pts.size(), 1.0 * cur_pts.size() / size_a);
+
         if (SHOW_TMI)
-            printf("FM ransac costs: %f \n ms", t_f.toc());
-        // ROS_DEBUG("FM ransac costs: %f \n ms", t_f.toc());
+            {printf("FM ransac: %d -> %lu: %f \n", size_a, cur_pts.size(), 1.0 * cur_pts.size() / size_a);
+            printf("FM ransac costs: %f ms \n", t_f.toc());}
     }
 }
 
@@ -3710,17 +3667,18 @@ void FeatureTracker::drawTrack(const cv::Mat &imLeft, const cv::Mat &imRight,
         }
     }
     //draw prediction
-    /*
-    for(size_t i = 0; i < predict_pts_debug.size(); i++)
-    {
-        cv::circle(imTrack, predict_pts_debug[i], 2, cv::Scalar(0, 170, 255), 2);
-    }
-    */
-    //printf("predict pts size %d \n", (int)predict_pts_debug.size());
-    //cv::Mat imCur2Compress;
-    //cv::resize(imCur2, imCur2Compress, cv::Size(cols, rows / 2));
-    // cv::imshow("tracking", imTrack);
-    // cv::waitKey(2);
+    
+    if(SHOW_TMI){
+        for(size_t i = 0; i < predict_pts_debug.size(); i++)
+        {
+            cv::circle(imTrack, predict_pts_debug[i], 2, cv::Scalar(0, 170, 255), 2);
+        }
+        
+        printf("predict pts size %d \n", (int)predict_pts_debug.size());}
+        // cv::Mat imCur2Compress;
+        // cv::resize(imCur2, imCur2Compress, cv::Size(cols, rows / 2));
+        // cv::imshow("tracking", imTrack);
+        // cv::waitKey(1);}
 }
 
 
@@ -3773,7 +3731,6 @@ cv::Mat FeatureTracker::getTrackImage()
 //estimator
 Estimator::Estimator(): f_manager{Rs}
 {
-    // ROS_INFO("init begins");
     printf("init begins \n");
     initThreadFlag = false;
     clearState();
@@ -3930,12 +3887,14 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
         featureFrame = featureTracker.trackImage(t, _img);
     else
         featureFrame = featureTracker.trackImage(t, _img, _img1);
-    //printf("featureTracker time: %f\n", featureTrackerTime.toc());
+    if(SHOW_TMI)
+        printf("featureTracker time: %f\n", featureTrackerTime.toc());
 
     if (SHOW_TRACK)
     {
         cv::Mat imgTrack = featureTracker.getTrackImage();
         cv::namedWindow("vio", CV_WINDOW_NORMAL); 
+        cv::resizeWindow("vio", imgTrack.cols, imgTrack.rows); //TODO
         cv::imshow("vio", imgTrack);
         cv::waitKey(1);
         // pubTrackImage(imgTrack, t);
@@ -3967,7 +3926,8 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
     mBuf.lock();
     accBuf.push(make_pair(t, linearAcceleration));
     gyrBuf.push(make_pair(t, angularVelocity));
-    //printf("input imu with time %f \n", t);
+    if(SHOW_TMI)
+        printf("input imu with time %f \n", t);
     mBuf.unlock();
 
     fastPredictIMU(t, linearAcceleration, angularVelocity);
@@ -3994,8 +3954,9 @@ bool Estimator::getIMUInterval(double t0, double t1, vector<pair<double, Eigen::
         printf("not receive imu\n");
         return false;
     }
-    //printf("get imu from %f %f\n", t0, t1);
-    //printf("imu fornt time %f   imu end time %f\n", accBuf.front().first, accBuf.back().first);
+    if(SHOW_TMI){
+        printf("get imu from %f %f\n", t0, t1);
+        printf("imu fornt time %f   imu end time %f\n", accBuf.front().first, accBuf.back().first);}
     if(t1 <= accBuf.back().first)
     {
         while (accBuf.front().first <= t0)
@@ -4033,7 +3994,8 @@ void Estimator::processMeasurements()
 {
     while (1)
     {
-        //printf("process measurments\n");
+        if(SHOW_TMI)
+            printf("process measurments\n");
         pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > feature;
         vector<pair<double, Eigen::Vector3d>> accVector, gyrVector;
         if(!featureBuf.empty())
@@ -4172,22 +4134,26 @@ void Estimator::processIMU(double t, double dt, const Vector3d &linear_accelerat
 
 void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const double header)
 {
-    // ROS_DEBUG("new image coming ------------------------------------------");
-    // ROS_DEBUG("Adding feature points %lu", image.size());
+    if(SHOW_TMI){
+        printf("new image coming ------------------------------------------ \n");
+        printf("Adding feature points %lu \n", image.size());}
     if (f_manager.addFeatureCheckParallax(frame_count, image, td))
     {
         marginalization_flag = MARGIN_OLD;
-        //printf("keyframe\n");
+        if(SHOW_TMI)
+            printf("keyframe\n");
     }
     else
     {
         marginalization_flag = MARGIN_SECOND_NEW;
-        //printf("non-keyframe\n");
+        if(SHOW_TMI)
+            printf("non-keyframe\n");
     }
 
-    // ROS_DEBUG("%s", marginalization_flag ? "Non-keyframe" : "Keyframe");
-    // ROS_DEBUG("Solving %d", frame_count);
-    // ROS_DEBUG("number of feature: %d", f_manager.getFeatureCount());
+    if(SHOW_TMI){
+        printf("%s \n", marginalization_flag ? "Non-keyframe" : "Keyframe");
+        printf("Solving %d \n", frame_count);
+        printf("number of feature: %d \n", f_manager.getFeatureCount());}
     Headers[frame_count] = header;
 
     ImageFrame imageframe(image, header);
@@ -4197,7 +4163,6 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
 
     if(ESTIMATE_EXTRINSIC == 2)
     {
-        // ROS_INFO("calibrating extrinsic param, rotation movement is needed");
         printf("calibrating extrinsic param, rotation movement is needed \n");
         if (frame_count != 0)
         {
@@ -4205,9 +4170,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
             Matrix3d calib_ric;
             if (initial_ex_rotation.CalibrationExRotation(corres, pre_integrations[frame_count]->delta_q, calib_ric))
             {
-                // ROS_WARN("initial extrinsic rotation calib success");
                 printf("initial extrinsic rotation calib success \n");
-                // ROS_WARN_STREAM("initial extrinsic rotation: " << endl << calib_ric);
                 std::cout << "initial extrinsic rotation: " << endl << calib_ric << endl;
                 ric[0] = calib_ric;
                 RIC[0] = calib_ric;
@@ -4234,7 +4197,6 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                     solver_flag = NON_LINEAR;
                     optimization();
                     slideWindow();
-                    // ROS_INFO("Initialization finish!");
                     printf("Initialization finish! \n");
                 }
                 else
@@ -4265,7 +4227,6 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                 solver_flag = NON_LINEAR;
                 optimization();
                 slideWindow();
-                // ROS_INFO("Initialization finish!");
                 printf("Initialization finish! \n");
             }
         }
@@ -4281,7 +4242,6 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
             {
                 solver_flag = NON_LINEAR;
                 slideWindow();
-                // ROS_INFO("Initialization finish!");
                 printf("Initialization finish! \n");
             }
         }
@@ -4314,18 +4274,16 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
             predictPtsInNextFrame();
         }
             
-        // ROS_DEBUG("solver costs: %fms", t_solve.toc());
+
         if (SHOW_TMI)
-        printf("solver costs: %fms \n", t_solve.toc());
+            printf("solver costs: %fms \n", t_solve.toc());
 
         if (failureDetection())
         {
-            // ROS_WARN("WARN : failure detection!");
             printf("failure detection! \n");
             failure_occur = 1;
             clearState();
             setParameter();
-            // ROS_WARN("system reboot!");
             printf("WARN : system reboot! \n");
 
             return;
@@ -4373,7 +4331,6 @@ bool Estimator::initialStructure()
         //ROS_WARN("IMU variation %f!", var);
         if(var < 0.25)
         {
-            // ROS_INFO("IMU excitation not enouth!");
             printf("IMU excitation not enouth! \n");
             //return false;
         }
@@ -4411,8 +4368,8 @@ bool Estimator::initialStructure()
               relative_R, relative_T,
               sfm_f, sfm_tracked_points))
     {
-        // ROS_DEBUG("global SFM failed!");
-        printf("global SFM failed! \n");
+        if(SHOW_TMI)
+            printf("global SFM failed! \n");
         marginalization_flag = MARGIN_OLD;
         return false;
     }
@@ -4467,13 +4424,11 @@ bool Estimator::initialStructure()
         if(pts_3_vector.size() < 6)
         {
             cout << "pts_3_vector size " << pts_3_vector.size() << endl;
-            // ROS_DEBUG("Not enough points for solve pnp !");
             printf("Not enough points for solve pnp ! \n");
             return false;
         }
         if (! cv::solvePnP(pts_3_vector, pts_2_vector, K, D, rvec, t, 1))
         {
-            // ROS_DEBUG("solve pnp fail!");
             printf("solve pnp fail! \n");
             return false;
         }
@@ -4491,7 +4446,6 @@ bool Estimator::initialStructure()
         return true;
     else
     {
-        // ROS_INFO("misalign visual structure with IMU");
         printf("misalign visual structure with IMU \n");
         return false;
     }
@@ -4506,7 +4460,6 @@ bool Estimator::visualInitialAlign()
     bool result = VisualIMUAlignment(all_image_frame, Bgs, g, x);
     if(!result)
     {
-        // ROS_DEBUG("solve g failed!");
         printf("solve g failed! \n");
         return false;
     }
@@ -4551,9 +4504,7 @@ bool Estimator::visualInitialAlign()
         Rs[i] = rot_diff * Rs[i];
         Vs[i] = rot_diff * Vs[i];
     }
-    // ROS_DEBUG_STREAM("g0     " << g.transpose());
     std::cout << "g0     " << g.transpose() << endl;
-    // ROS_DEBUG_STREAM("my R0  " << Utility::R2ypr(Rs[0]).transpose()); 
     std::cout << "my R0  " << Utility::R2ypr(Rs[0]).transpose() << endl;
 
     f_manager.clearDepth();
@@ -4585,7 +4536,8 @@ bool Estimator::relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l)
             if(average_parallax * 460 > 30 && m_estimator.solveRelativeRT(corres, relative_R, relative_T))
             {
                 l = i;
-                // ROS_DEBUG("average_parallax %f choose l %d and newest frame to triangulate the whole structure", average_parallax * 460, l);
+                if(SHOW_TMI)
+                    printf("average_parallax %f choose l %d and newest frame to triangulate the whole structure \n", average_parallax * 460, l);
                 return true;
             }
         }
@@ -4665,7 +4617,6 @@ void Estimator::double2vector()
         Matrix3d rot_diff = Utility::ypr2R(Vector3d(y_diff, 0, 0));
         if (abs(abs(origin_R0.y()) - 90) < 1.0 || abs(abs(origin_R00.y()) - 90) < 1.0)
         {
-            // ROS_DEBUG("euler singular point!");
             printf("euler singular point! \n");
             rot_diff = Rs[0] * Quaterniond(para_Pose[0][6],
                                            para_Pose[0][3],
@@ -4736,19 +4687,16 @@ bool Estimator::failureDetection()
     return false;
     if (f_manager.last_track_num < 2)
     {
-        // ROS_INFO(" little feature %d", f_manager.last_track_num);
         printf(" little feature %d \n", f_manager.last_track_num);
         //return true;
     }
     if (Bas[WINDOW_SIZE].norm() > 2.5)
     {
-        // ROS_INFO(" big IMU acc bias estimation %f", Bas[WINDOW_SIZE].norm());
         printf(" big IMU acc bias estimation %f \n", Bas[WINDOW_SIZE].norm());
         return true;
     }
     if (Bgs[WINDOW_SIZE].norm() > 1.0)
     {
-        // ROS_INFO(" big IMU gyr bias estimation %f", Bgs[WINDOW_SIZE].norm());
         printf(" big IMU gyr bias estimation %f \n", Bgs[WINDOW_SIZE].norm());
         return true;
     }
@@ -4889,8 +4837,9 @@ void Estimator::optimization()
         }
     }
 
-    // ROS_DEBUG("visual measurement count: %d", f_m_cnt);
-    //printf("prepare for ceres: %f \n", t_prepare.toc());
+    if(SHOW_TMI){
+        printf("visual measurement count: %d \n", f_m_cnt);
+        printf("prepare for ceres: %f \n", t_prepare.toc());}
 
     ceres::Solver::Options options;
 
@@ -4908,12 +4857,15 @@ void Estimator::optimization()
     TicToc t_solver;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-    //cout << summary.BriefReport() << endl;
-    // ROS_DEBUG("Iterations : %d", static_cast<int>(summary.iterations.size()));
-    //printf("solver costs: %f \n", t_solver.toc());
+
+    if(SHOW_TMI){
+        cout << summary.BriefReport() << endl;
+        printf("Iterations : %d \n", static_cast<int>(summary.iterations.size()));
+        printf("solver costs: %f \n", t_solver.toc());}
 
     double2vector();
-    //printf("frame_count: %d \n", frame_count);
+    if(SHOW_TMI)
+        printf("frame_count: %d \n", frame_count);
 
     if(frame_count < WINDOW_SIZE)
         return;
@@ -5010,11 +4962,13 @@ void Estimator::optimization()
 
         TicToc t_pre_margin;
         marginalization_info->preMarginalize();
-        // ROS_DEBUG("pre marginalization %f ms", t_pre_margin.toc());
+        if(SHOW_TMI)
+            printf("pre marginalization %f ms \n", t_pre_margin.toc());
         
         TicToc t_margin;
         marginalization_info->marginalize();
-        // ROS_DEBUG("marginalization %f ms", t_margin.toc());
+        if(SHOW_TMI)
+            printf("marginalization %f ms \n", t_margin.toc());
 
         std::unordered_map<long, double *> addr_shift;
         for (int i = 1; i <= WINDOW_SIZE; i++)
@@ -5064,14 +5018,19 @@ void Estimator::optimization()
             }
 
             TicToc t_pre_margin;
-            // ROS_DEBUG("begin marginalization");
+            if(SHOW_TMI)
+                printf("begin marginalization \n");
             marginalization_info->preMarginalize();
-            // ROS_DEBUG("end pre marginalization, %f ms", t_pre_margin.toc());
+            
+            if(SHOW_TMI)
+                printf("end pre marginalization, %f ms \n", t_pre_margin.toc());
 
             TicToc t_margin;
-            // ROS_DEBUG("begin marginalization");
+            if(SHOW_TMI)
+                printf("begin marginalization \n");
             marginalization_info->marginalize();
-            // ROS_DEBUG("end marginalization, %f ms", t_margin.toc());
+            if(SHOW_TMI)
+                printf("end marginalization, %f ms \n", t_margin.toc());
             
             std::unordered_map<long, double *> addr_shift;
             for (int i = 0; i <= WINDOW_SIZE; i++)
@@ -5244,7 +5203,8 @@ void Estimator::getPoseInWorldFrame(int index, Eigen::Matrix4d &T)
 
 void Estimator::predictPtsInNextFrame()
 {
-    //printf("predict pts in next frame\n");
+    if(SHOW_TMI)
+        printf("predict pts in next frame\n");
     if(frame_count < 2)
         return;
     // predict next pose. Assume constant velocity motion
@@ -5260,7 +5220,8 @@ void Estimator::predictPtsInNextFrame()
         {
             int firstIndex = it_per_id.start_frame;
             int lastIndex = it_per_id.start_frame + it_per_id.feature_per_frame.size() - 1;
-            //printf("cur frame index  %d last frame index %d\n", frame_count, lastIndex);
+            if(SHOW_TMI)
+                printf("cur frame index  %d last frame index %d\n", frame_count, lastIndex);
             if((int)it_per_id.feature_per_frame.size() >= 2 && lastIndex == frame_count)
             {
                 double depth = it_per_id.estimated_depth;
@@ -5274,7 +5235,8 @@ void Estimator::predictPtsInNextFrame()
         }
     }
     featureTracker.setPrediction(predictPts);
-    //printf("estimator output %d predict pts\n",(int)predictPts.size());
+    if(SHOW_TMI)
+        printf("estimator output %d predict pts\n",(int)predictPts.size());
 }
 
 double Estimator::reprojectionError(Matrix3d &Ri, Vector3d &Pi, Matrix3d &rici, Vector3d &tici,
@@ -5315,7 +5277,8 @@ void Estimator::outliersRejection(set<int> &removeIndex)
                                                     depth, pts_i, pts_j);
                 err += tmp_error;
                 errCnt++;
-                //printf("tmp_error %f\n", FOCAL_LENGTH / 1.5 * tmp_error);
+                if(SHOW_TMI)
+                    printf("tmp_error %f\n", FOCAL_LENGTH / 1.5 * tmp_error);
             }
             // need to rewrite projecton factor.........
             if(STEREO && it_per_frame.is_stereo)
@@ -5329,7 +5292,8 @@ void Estimator::outliersRejection(set<int> &removeIndex)
                                                         depth, pts_i, pts_j_right);
                     err += tmp_error;
                     errCnt++;
-                    //printf("tmp_error %f\n", FOCAL_LENGTH / 1.5 * tmp_error);
+                    if(SHOW_TMI)
+                        printf("tmp_error %f\n", FOCAL_LENGTH / 1.5 * tmp_error);
                 }
                 else
                 {
@@ -5338,7 +5302,8 @@ void Estimator::outliersRejection(set<int> &removeIndex)
                                                         depth, pts_i, pts_j_right);
                     err += tmp_error;
                     errCnt++;
-                    //printf("tmp_error %f\n", FOCAL_LENGTH / 1.5 * tmp_error);
+                    if(SHOW_TMI)
+                        printf("tmp_error %f\n", FOCAL_LENGTH / 1.5 * tmp_error);
                 }       
             }
         }
@@ -5390,79 +5355,13 @@ void Estimator::updateLatestStates()
 }
 //estimator
 
-//visualization //TODO
-// ros::Publisher pub_odometry;//, pub_latest_odometry;
-// ros::Publisher pub_path;
-// ros::Publisher pub_point_cloud, pub_margin_cloud;
-// ros::Publisher pub_key_poses;
-//ros::Publisher pub_camera_pose;
-//ros::Publisher pub_camera_pose_visual;
-// nav_msgs::Path path;
-
-// ros::Publisher pub_keyframe_pose;
-// ros::Publisher pub_keyframe_point;
-// ros::Publisher pub_extrinsic;
-
-//ros::Publisher pub_image_track;
-
-// static double sum_of_path = 0;
-// static Vector3d last_path(0.0, 0.0, 0.0);
-
-// size_t pub_counter = 0;
-
-// void registerPub(ros::NodeHandle &n)
-// {
-// //    pub_latest_odometry = n.advertise<nav_msgs::Odometry>("imu_propagate", 1000);
-//     // pub_path = n.advertise<nav_msgs::Path>("path", 1000); //TODO
-//     pub_odometry = n.advertise<nav_msgs::Odometry>("odometry", 1000);
-//     // pub_point_cloud = n.advertise<sensor_msgs::PointCloud>("point_cloud", 1000);
-//     // pub_margin_cloud = n.advertise<sensor_msgs::PointCloud>("margin_cloud", 1000);
-//     // pub_key_poses = n.advertise<visualization_msgs::Marker>("key_poses", 1000);
-// //    pub_camera_pose = n.advertise<nav_msgs::Odometry>("camera_pose", 1000);
-// //    pub_camera_pose_visual = n.advertise<visualization_msgs::MarkerArray>("camera_pose_visual", 1000);
-//     // pub_keyframe_pose = n.advertise<nav_msgs::Odometry>("keyframe_pose", 1000);
-//     // pub_keyframe_point = n.advertise<sensor_msgs::PointCloud>("keyframe_point", 1000);
-//     // pub_extrinsic = n.advertise<nav_msgs::Odometry>("extrinsic", 1000);
-// //    pub_image_track = n.advertise<sensor_msgs::Image>("image_track", 1000);
-// }
-
-// void pubLatestOdometry(const Eigen::Vector3d &P, const Eigen::Quaterniond &Q, const Eigen::Vector3d &V, double t)
-// {
-//     nav_msgs::Odometry odometry;
-//     odometry.header.stamp = ros::Time(t);
-//     odometry.header.frame_id = "world";
-//     odometry.pose.pose.position.x = P.x();
-//     odometry.pose.pose.position.y = P.y();
-//     odometry.pose.pose.position.z = P.z();
-//     odometry.pose.pose.orientation.x = Q.x();
-//     odometry.pose.pose.orientation.y = Q.y();
-//     odometry.pose.pose.orientation.z = Q.z();
-//     odometry.pose.pose.orientation.w = Q.w();
-//     odometry.twist.twist.linear.x = V.x();
-//     odometry.twist.twist.linear.y = V.y();
-//     odometry.twist.twist.linear.z = V.z();
-//     pub_latest_odometry.publish(odometry);
-// }
-
-// void pubTrackImage(const cv::Mat &imgTrack, const double t)
-// {
-//     std_msgs::Header header;
-//     header.frame_id = "world";
-//     header.stamp = ros::Time(t);
-//     sensor_msgs::ImagePtr imgTrackMsg = cv_bridge::CvImage(header, "bgr8", imgTrack).toImageMsg();
-//     pub_image_track.publish(imgTrackMsg);
-//}
-
-
 void printStatistics(const Estimator &estimator, double t)
 {
     if (estimator.solver_flag != Estimator::SolverFlag::NON_LINEAR)
         return;    
     if (SHOW_TMI){
-    // ROS_DEBUG_STREAM("position: " << estimator.Ps[WINDOW_SIZE].transpose());
-    std::cout << "position: " << estimator.Ps[WINDOW_SIZE].transpose() << endl;
-    // ROS_DEBUG_STREAM("orientation: " << estimator.Vs[WINDOW_SIZE].transpose()); //typo
-    std::cout << "velocity: " << estimator.Vs[WINDOW_SIZE].transpose() << endl;
+        std::cout << "position: " << estimator.Ps[WINDOW_SIZE].transpose() << endl;
+        std::cout << "velocity: " << estimator.Vs[WINDOW_SIZE].transpose() << endl;
     }
     if (ESTIMATE_EXTRINSIC)
     {
@@ -5491,48 +5390,23 @@ void printStatistics(const Estimator &estimator, double t)
     static int sum_of_calculation = 0;
     sum_of_time += t;
     sum_of_calculation++;
-    // ROS_DEBUG("vo solver costs: %f ms", t);
-    // ROS_DEBUG("average of time %f ms", sum_of_time / sum_of_calculation);
+    if(SHOW_TMI){
+        printf("vo solver costs: %f ms \n", t);
+        printf("average of time %f ms \n", sum_of_time / sum_of_calculation);
 
-    // sum_of_path += (estimator.Ps[WINDOW_SIZE] - last_path).norm();
-    // last_path = estimator.Ps[WINDOW_SIZE];
-    // ROS_DEBUG("sum of path %f", sum_of_path);
-    // if (ESTIMATE_TD) //TODO
-        // ROS_INFO("td %f", estimator.td);
-        // printf("td %f \n", estimator.td);
+        // sum_of_path += (estimator.Ps[WINDOW_SIZE] - last_path).norm();
+        // last_path = estimator.Ps[WINDOW_SIZE];
+        // printf("sum of path %f \n", sum_of_path);
+        if (ESTIMATE_TD) //TODO
+            printf("td %f \n", estimator.td);}
 }
 
 void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
 {
     if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR)
     {
-        // nav_msgs::Odometry odometry;
-        // odometry.header = header;
-        // odometry.header.frame_id = "world";
-        // odometry.child_frame_id = "world";
         Quaterniond tmp_Q;
         tmp_Q = Quaterniond(estimator.Rs[WINDOW_SIZE]);
-        // odometry.pose.pose.position.x = estimator.Ps[WINDOW_SIZE].x();
-        // odometry.pose.pose.position.y = estimator.Ps[WINDOW_SIZE].y();
-        // odometry.pose.pose.position.z = estimator.Ps[WINDOW_SIZE].z();
-        // odometry.pose.pose.orientation.x = tmp_Q.x();
-        // odometry.pose.pose.orientation.y = tmp_Q.y();
-        // odometry.pose.pose.orientation.z = tmp_Q.z();
-        // odometry.pose.pose.orientation.w = tmp_Q.w();
-        // odometry.twist.twist.linear.x = estimator.Vs[WINDOW_SIZE].x();
-        // odometry.twist.twist.linear.y = estimator.Vs[WINDOW_SIZE].y();
-        // odometry.twist.twist.linear.z = estimator.Vs[WINDOW_SIZE].z();
-        // pub_odometry.publish(odometry);
-
-        // geometry_msgs::PoseStamped pose_stamped;
-        // pose_stamped.header = header;
-        // pose_stamped.header.frame_id = "world";
-        // pose_stamped.pose = odometry.pose.pose;
-        // path.header = header;
-        // path.header.frame_id = "world";
-        // path.poses.push_back(pose_stamped);
-        // pub_path.publish(path);
-
         // write result to file
         ofstream foutC(VINS_RESULT_PATH, ios::app);
         foutC.setf(ios::fixed, ios::floatfield);
@@ -5552,210 +5426,9 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
         foutC.close();
         Eigen::Vector3d tmp_T = estimator.Ps[WINDOW_SIZE];
         Eigen::Vector3d tmp_V = estimator.Vs[WINDOW_SIZE];
-        printf("time: %f, td(offset): %f \n Pos: %f %f %f quat: %f %f %f %f vel: %f %f %f \n", header.stamp.toSec(), estimator.td, tmp_T.x(), tmp_T.y(), tmp_T.z(),
+        if(!SHOW_TMI)
+            printf("time: %f, td(offset): %f \n Pos: %f %f %f quat: %f %f %f %f vel: %f %f %f \n", header.stamp.toSec(), estimator.td, tmp_T.x(), tmp_T.y(), tmp_T.z(),
                                                           tmp_Q.w(), tmp_Q.x(), tmp_Q.y(), tmp_Q.z(), tmp_V.x(), tmp_V.y(), tmp_V.z());
     }
 }
-
-// void pubKeyPoses(const Estimator &estimator, const std_msgs::Header &header)
-// {
-//     if (estimator.key_poses.size() == 0)
-//         return;
-//     visualization_msgs::Marker key_poses;
-//     key_poses.header = header;
-//     key_poses.header.frame_id = "world";
-//     key_poses.ns = "key_poses";
-//     key_poses.type = visualization_msgs::Marker::SPHERE_LIST;
-//     key_poses.action = visualization_msgs::Marker::ADD;
-//     key_poses.pose.orientation.w = 1.0;
-//     key_poses.lifetime = ros::Duration();
-
-//     //static int key_poses_id = 0;
-//     key_poses.id = 0; //key_poses_id++;
-//     key_poses.scale.x = 0.05;
-//     key_poses.scale.y = 0.05;
-//     key_poses.scale.z = 0.05;
-//     key_poses.color.r = 1.0;
-//     key_poses.color.a = 1.0;
-
-//     for (int i = 0; i <= WINDOW_SIZE; i++)
-//     {
-//         geometry_msgs::Point pose_marker;
-//         Vector3d correct_pose;
-//         correct_pose = estimator.key_poses[i];
-//         pose_marker.x = correct_pose.x();
-//         pose_marker.y = correct_pose.y();
-//         pose_marker.z = correct_pose.z();
-//         key_poses.points.push_back(pose_marker);
-//     }
-//     pub_key_poses.publish(key_poses);
-// }
-
-// void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header)
-// {
-//     sensor_msgs::PointCloud point_cloud, loop_point_cloud;
-//     point_cloud.header = header;
-//     loop_point_cloud.header = header;
-
-
-//     for (auto &it_per_id : estimator.f_manager.feature)
-//     {
-//         int used_num;
-//         used_num = it_per_id.feature_per_frame.size();
-//         if (!(used_num >= 2 && it_per_id.start_frame < WINDOW_SIZE - 2))
-//             continue;
-//         if (it_per_id.start_frame > WINDOW_SIZE * 3.0 / 4.0 || it_per_id.solve_flag != 1)
-//             continue;
-//         int imu_i = it_per_id.start_frame;
-//         Vector3d pts_i = it_per_id.feature_per_frame[0].point * it_per_id.estimated_depth;
-//         Vector3d w_pts_i = estimator.Rs[imu_i] * (estimator.ric[0] * pts_i + estimator.tic[0]) + estimator.Ps[imu_i];
-
-//         geometry_msgs::Point32 p;
-//         p.x = w_pts_i(0);
-//         p.y = w_pts_i(1);
-//         p.z = w_pts_i(2);
-//         point_cloud.points.push_back(p);
-//     }
-//     pub_point_cloud.publish(point_cloud);
-
-
-//     // pub margined potin
-//     sensor_msgs::PointCloud margin_cloud;
-//     margin_cloud.header = header;
-
-//     for (auto &it_per_id : estimator.f_manager.feature)
-//     { 
-//         int used_num;
-//         used_num = it_per_id.feature_per_frame.size();
-//         if (!(used_num >= 2 && it_per_id.start_frame < WINDOW_SIZE - 2))
-//             continue;
-//         //if (it_per_id->start_frame > WINDOW_SIZE * 3.0 / 4.0 || it_per_id->solve_flag != 1)
-//         //        continue;
-
-//         if (it_per_id.start_frame == 0 && it_per_id.feature_per_frame.size() <= 2 
-//             && it_per_id.solve_flag == 1 )
-//         {
-//             int imu_i = it_per_id.start_frame;
-//             Vector3d pts_i = it_per_id.feature_per_frame[0].point * it_per_id.estimated_depth;
-//             Vector3d w_pts_i = estimator.Rs[imu_i] * (estimator.ric[0] * pts_i + estimator.tic[0]) + estimator.Ps[imu_i];
-
-//             geometry_msgs::Point32 p;
-//             p.x = w_pts_i(0);
-//             p.y = w_pts_i(1);
-//             p.z = w_pts_i(2);
-//             margin_cloud.points.push_back(p);
-//         }
-//     }
-//     pub_margin_cloud.publish(margin_cloud);
-// }
-
-
-// void pubTF(const Estimator &estimator, const std_msgs::Header &header)
-// {
-//     if( estimator.solver_flag != Estimator::SolverFlag::NON_LINEAR)
-//         return;
-//     // static tf::TransformBroadcaster br;
-//     // tf::Transform transform;
-//     // tf::Quaternion q;
-//     // // body frame
-//     // Vector3d correct_t;
-//     // Quaterniond correct_q;
-//     // correct_t = estimator.Ps[WINDOW_SIZE];
-//     // correct_q = estimator.Rs[WINDOW_SIZE];
-
-//     // transform.setOrigin(tf::Vector3(correct_t(0),
-//     //                                 correct_t(1),
-//     //                                 correct_t(2)));
-//     // q.setW(correct_q.w());
-//     // q.setX(correct_q.x());
-//     // q.setY(correct_q.y());
-//     // q.setZ(correct_q.z());
-//     // transform.setRotation(q);
-//     // br.sendTransform(tf::StampedTransform(transform, header.stamp, "world", "body"));
-
-//     // // camera frame
-//     // transform.setOrigin(tf::Vector3(estimator.tic[0].x(),
-//     //                                 estimator.tic[0].y(),
-//     //                                 estimator.tic[0].z()));
-//     // q.setW(Quaterniond(estimator.ric[0]).w());
-//     // q.setX(Quaterniond(estimator.ric[0]).x());
-//     // q.setY(Quaterniond(estimator.ric[0]).y());
-//     // q.setZ(Quaterniond(estimator.ric[0]).z());
-//     // transform.setRotation(q);
-//     // br.sendTransform(tf::StampedTransform(transform, header.stamp, "body", "camera"));
-
-    
-//     nav_msgs::Odometry odometry;
-//     odometry.header = header;
-//     odometry.header.frame_id = "world";
-//     odometry.pose.pose.position.x = estimator.tic[0].x();
-//     odometry.pose.pose.position.y = estimator.tic[0].y();
-//     odometry.pose.pose.position.z = estimator.tic[0].z();
-//     Quaterniond tmp_q{estimator.ric[0]};
-//     odometry.pose.pose.orientation.x = tmp_q.x();
-//     odometry.pose.pose.orientation.y = tmp_q.y();
-//     odometry.pose.pose.orientation.z = tmp_q.z();
-//     odometry.pose.pose.orientation.w = tmp_q.w();
-//     pub_extrinsic.publish(odometry);
-
-// }
-
-// void pubKeyframe(const Estimator &estimator)
-// {
-//     // pub camera pose, 2D-3D points of keyframe
-//     if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR && estimator.marginalization_flag == 0)
-//     {
-//         int i = WINDOW_SIZE - 2;
-//         //Vector3d P = estimator.Ps[i] + estimator.Rs[i] * estimator.tic[0];
-//         Vector3d P = estimator.Ps[i];
-//         Quaterniond R = Quaterniond(estimator.Rs[i]);
-
-//         nav_msgs::Odometry odometry;
-//         odometry.header.stamp = ros::Time(estimator.Headers[WINDOW_SIZE - 2]);
-//         odometry.header.frame_id = "world";
-//         odometry.pose.pose.position.x = P.x();
-//         odometry.pose.pose.position.y = P.y();
-//         odometry.pose.pose.position.z = P.z();
-//         odometry.pose.pose.orientation.x = R.x();
-//         odometry.pose.pose.orientation.y = R.y();
-//         odometry.pose.pose.orientation.z = R.z();
-//         odometry.pose.pose.orientation.w = R.w();
-//         //printf("time: %f t: %f %f %f r: %f %f %f %f\n", odometry.header.stamp.toSec(), P.x(), P.y(), P.z(), R.w(), R.x(), R.y(), R.z());
-
-//         pub_keyframe_pose.publish(odometry);
-
-
-//         sensor_msgs::PointCloud point_cloud;
-//         point_cloud.header.stamp = ros::Time(estimator.Headers[WINDOW_SIZE - 2]);
-//         point_cloud.header.frame_id = "world";
-//         for (auto &it_per_id : estimator.f_manager.feature)
-//         {
-//             int frame_size = it_per_id.feature_per_frame.size();
-//             if(it_per_id.start_frame < WINDOW_SIZE - 2 && it_per_id.start_frame + frame_size - 1 >= WINDOW_SIZE - 2 && it_per_id.solve_flag == 1)
-//             {
-
-//                 int imu_i = it_per_id.start_frame;
-//                 Vector3d pts_i = it_per_id.feature_per_frame[0].point * it_per_id.estimated_depth;
-//                 Vector3d w_pts_i = estimator.Rs[imu_i] * (estimator.ric[0] * pts_i + estimator.tic[0])
-//                                       + estimator.Ps[imu_i];
-//                 geometry_msgs::Point32 p;
-//                 p.x = w_pts_i(0);
-//                 p.y = w_pts_i(1);
-//                 p.z = w_pts_i(2);
-//                 point_cloud.points.push_back(p);
-
-//                 int imu_j = WINDOW_SIZE - 2 - it_per_id.start_frame;
-//                 sensor_msgs::ChannelFloat32 p_2d;
-//                 p_2d.values.push_back(it_per_id.feature_per_frame[imu_j].point.x());
-//                 p_2d.values.push_back(it_per_id.feature_per_frame[imu_j].point.y());
-//                 p_2d.values.push_back(it_per_id.feature_per_frame[imu_j].uv.x());
-//                 p_2d.values.push_back(it_per_id.feature_per_frame[imu_j].uv.y());
-//                 p_2d.values.push_back(it_per_id.feature_id);
-//                 point_cloud.channels.push_back(p_2d);
-//             }
-
-//         }
-//         pub_keyframe_point.publish(point_cloud);
-//     }
-// }
 //visualization //TODO

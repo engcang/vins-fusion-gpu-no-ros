@@ -8,7 +8,7 @@ num_of_cam: 1
 imu_topic: "/imu0"
 image0_topic: "/cam0/image_raw"
 image1_topic: "/cam1/image_raw"
-output_path: "/home/usrg/config/output/"
+output_path: "/home/hcshim/config/output/"
 
 cam0_calib: "cam0_mei.yaml"
 cam1_calib: "cam1_mei.yaml"
@@ -17,7 +17,7 @@ image_height: 480
    
 
 # Extrinsic parameter between IMU and Camera.
-estimate_extrinsic: 1   # 0  Have an accurate extrinsic parameters. We will trust the following imu^R_cam, imu^T_cam, don't change it.
+estimate_extrinsic: 0   # 0  Have an accurate extrinsic parameters. We will trust the following imu^R_cam, imu^T_cam, don't change it.
                         # 1  Have an initial guess about extrinsic parameters. We will optimize around your initial guess.
 
 body_T_cam0: !!opencv-matrix
@@ -32,8 +32,8 @@ body_T_cam0: !!opencv-matrix
 #Multiple thread support
 multiple_thread: 1
 #Gpu accleration support
-use_gpu: 1
-use_gpu_acc_flow: 1
+use_gpu: 0
+use_gpu_acc_flow: 0
 
 
 #feature traker paprameters
@@ -44,7 +44,7 @@ F_threshold: 1.0        # ransac threshold (pixel)
 show_track: 1           # publish tracking image as topic
 show_TMI?: 0
 fisheye : 0
-fisheye_mask_path : "/home/usrg/fisheye_mask.jpg"
+fisheye_mask_path : "/home/hcshim/fisheye_mask.jpg"
 flow_back: 1            # perform forward and backward optical flow to improve feature tracking accuracy
 
 #optimization parameters

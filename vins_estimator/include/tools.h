@@ -43,11 +43,6 @@
 #include <iostream> // error
 #include <fstream>
 
-// #include <ros/ros.h>
-// #include <std_msgs/Header.h>
-// #include <std_msgs/Float32.h>
-
-
 using namespace std;
 using namespace camodocal;
 using namespace Eigen;
@@ -57,9 +52,7 @@ using namespace Eigen;
 const double FOCAL_LENGTH = 460.0;
 const int WINDOW_SIZE = 10;
 const int NUM_OF_F = 1000;
-// const int NUM_OF_CAM=1;
 extern int NUM_OF_CAM;
-//#define UNIT_SPHERE_ERROR
 
 extern double INIT_DEPTH;
 extern double MIN_PARALLAX;
@@ -79,7 +72,6 @@ extern int NUM_ITERATIONS;
 extern std::string EX_CALIB_RESULT_PATH;
 extern std::string VINS_RESULT_PATH;
 extern std::string OUTPUT_FOLDER;
-extern std::string IMU_TOPIC;
 extern double TD;
 extern int ESTIMATE_TD;
 extern int ROLLING_SHUTTER;
@@ -89,13 +81,9 @@ extern int USE_IMU;
 extern int MULTIPLE_THREAD;
 extern int USE_GPU;
 extern int USE_GPU_ACC_FLOW;
-extern int PUB_RECTIFY;
-extern Eigen::Matrix3d rectify_R_left;
-extern Eigen::Matrix3d rectify_R_right;
 // pts_gt for debug purpose;
 extern map<int, Eigen::Vector3d> pts_gt;
 
-// extern std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
 extern std::string FISHEYE_MASK;
 extern std::vector<std::string> CAM_NAMES;
 extern int MAX_CNT;
@@ -106,7 +94,6 @@ extern int FLOW_BACK;
 extern int SHOW_TMI; //added
 extern int FISHEYE; //added
 
-// void readParameters(std::string config_file);
 void readParameters(const string &config_file);
 
 

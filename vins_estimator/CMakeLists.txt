@@ -4,6 +4,7 @@ project(vins)
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS "-std=c++11")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC -Wall")
+#set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC -Wall -g -pthread -fopenmp")
 
 include_directories(${CMAKE_SOURCE_DIR}/../camera_models/include)
 add_library( camera_models SHARED IMPORTED )

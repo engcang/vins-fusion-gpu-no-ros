@@ -35,29 +35,6 @@ void img1_callback(const cv::Mat &img_msg, const double &t)
     m_buf.unlock();
 }
 
-
-// cv::Mat getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
-// {
-//     cv_bridge::CvImageConstPtr ptr;
-//     if (img_msg->encoding == "8UC1")
-//     {
-//         sensor_msgs::Image img;
-//         img.header = img_msg->header;
-//         img.height = img_msg->height;
-//         img.width = img_msg->width;
-//         img.is_bigendian = img_msg->is_bigendian;
-//         img.step = img_msg->step;
-//         img.data = img_msg->data;
-//         img.encoding = "mono8";
-//         ptr = cv_bridge::toCvCopy(img, sensor_msgs::image_encodings::MONO8);
-//     }
-//     else
-//         ptr = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::MONO8);
-
-//     cv::Mat img = ptr->image.clone();
-//     return img;
-// }
-
 // extract images with same timestamp from two topics
 void sync_process()
 {
@@ -71,8 +48,6 @@ void sync_process()
             m_buf.lock();
             if (!img0_buf.empty() && !img1_buf.empty())
             {
-                // double time0 = img0_buf.front()->header.stamp.toSec();
-                // double time1 = img1_buf.front()->header.stamp.toSec();
                 double time0 = img0_buf.front().second;
                 double time1 = img1_buf.front().second;
                 // 0.003s sync tolerance
@@ -88,16 +63,11 @@ void sync_process()
                 }
                 else
                 {
-                    // time = img0_buf.front()->header.stamp.toSec();
                     time = img0_buf.front().second;
-                    // header = img0_buf.front()->header;
-                    // image0 = getImageFromMsg(img0_buf.front());
                     image0 = img0_buf.front().first;
                     img0_buf.pop();
-                    // image1 = getImageFromMsg(img1_buf.front());
                     image1 = img1_buf.front().first;
                     img1_buf.pop();
-                    //printf("find img0 and img1\n");
                 }
             }
             m_buf.unlock();
@@ -112,10 +82,7 @@ void sync_process()
             m_buf.lock();
             if(!img0_buf.empty())
             {
-                // time = img0_buf.front()->header.stamp.toSec();
                 time = img0_buf.front().second;
-                // header = img0_buf.front()->header;
-                // image = getImageFromMsg(img0_buf.front());
                 image = img0_buf.front().first;
                 img0_buf.pop();
             }
@@ -219,23 +186,15 @@ void LoadImus(ifstream & fImus, const ros::Time &imageTimestamp)
 int main(int argc, char **argv)
 {
   /******************* load image begin ***********************/
-    if(argc != 5 && argc!=6)
+    if(argc != 5 && argc!=7)
     {
         cout << argc << endl;
         cerr << endl << "Usage: ./vins_estimator path_to_setting_file path_to_image_folder path_to_times_file path_to_imu_data_file" <<endl;
         return 1;
     }
-    
     //read parameters section
     readParameters(argv[1]);
     estimator.setParameter();
-
-    // for (int i = 0; i < NUM_OF_CAM; i++)
-        // trackerData[i].readIntrinsicParameter(CAM_NAMES[i]); //add
-
-
-
-
 
     if (!STEREO)
     {
@@ -304,7 +263,7 @@ int main(int argc, char **argv)
     {
                 //imu data file 
         ifstream fImus;
-        fImus.open(argv[5]); // check
+        fImus.open(argv[6]); // check
 
         cv::Mat image;
         cv::Mat image2;
@@ -315,7 +274,7 @@ int main(int argc, char **argv)
         vector<double> vTimeStamps;
         vector<double> vTimeStamps2;
         LoadImages(string(argv[2]),string(argv[4]),vStrImagesFileNames,vTimeStamps); //left
-        LoadImages(string(argv[3]),string(argv[4]),vStrImagesFileNames2,vTimeStamps2); //right
+        LoadImages(string(argv[3]),string(argv[5]),vStrImagesFileNames2,vTimeStamps2); //right
         
         int tmp_imageNum = vStrImagesFileNames.size();
         int tmp_imageNum2 = vStrImagesFileNames2.size();
