@@ -3042,7 +3042,7 @@ FeatureTracker::FeatureTracker()
 void FeatureTracker::setMask()
 {
     if(FISHEYE) // Added
-        mask = fisheye_mask.clone();}
+        mask = fisheye_mask.clone();
     else
         mask = cv::Mat(row, col, CV_8UC1, cv::Scalar(255));
 
