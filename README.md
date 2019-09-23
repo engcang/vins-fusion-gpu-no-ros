@@ -1,8 +1,8 @@
 # VINS-Fusion-GPU version's No ROS version
 <br>
-
-### VINS-Fusion : [here](https://github.com/HKUST-Aerial-Robotics/VINS-Fusion)
-### VINS-Fusion-GPU : [here](https://github.com/pjrambo/VINS-Fusion-gpu)
+#### Check other branch, ROS removing is done.
+### VINS-Fusion : from [here](https://github.com/HKUST-Aerial-Robotics/VINS-Fusion)
+### VINS-Fusion-GPU : from [here](https://github.com/pjrambo/VINS-Fusion-gpu)
 
 <br>
 <br>
