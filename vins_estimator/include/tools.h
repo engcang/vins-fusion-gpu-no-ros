@@ -864,7 +864,7 @@ class IMUFactor : public ceres::SizedCostFunction<15, 7, 9, 7, 9>
 };
 //imu_factor
 //marginalization_factor
-const int NUM_THREADS = 4;
+const int NUM_THREADS = 1;
 
 struct ResidualBlockInfo
 {

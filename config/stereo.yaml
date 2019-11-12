@@ -51,10 +51,12 @@ min_dist: 30            # min distance between two features
 freq: 0                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image 
 F_threshold: 1.0        # ransac threshold (pixel)
 show_track: 1           # publish tracking image as topic
-show_TMI? : 1
+show_TMI? : 0
 fisheye : 0
-fisheye_mask_path : "/home/hcshim/test.png"
+fisheye_mask_name : "test.png" # has to be in same folder with this file.
+thread_affine : 1
 flow_back: 1            # perform forward and backward optical flow to improve feature tracking accuracy
+
 
 #optimization parameters
 max_solver_time: 0.04  # max solver itration time (ms), to guarantee real time

@@ -42,6 +42,7 @@ int SHOW_TRACK;
 int SHOW_TMI;
 int FISHEYE;
 int FLOW_BACK;
+int AFFINITY;
 
 void readParameters(const string &config_file)
 {
@@ -64,10 +65,11 @@ void readParameters(const string &config_file)
     F_THRESHOLD = fsSettings["F_threshold"];
     SHOW_TRACK = fsSettings["show_track"];
     SHOW_TMI = fsSettings["show_TMI?"];
-    FISHEYE = fsSettings["fisheye"]; // added
-    if (FISHEYE){
-        fsSettings["fisheye_mask_path"] >> FISHEYE_MASK; //added
-        fisheye_mask=cv::imread(FISHEYE_MASK,0);}
+    AFFINITY = fsSettings["thread_affine"];
+//    FISHEYE = fsSettings["fisheye"]; // added
+//    if (FISHEYE){
+//        fsSettings["fisheye_mask_path"] >> FISHEYE_MASK; //added
+//        fisheye_mask=cv::imread(FISHEYE_MASK,0);}
     FLOW_BACK = fsSettings["flow_back"];
 
     MULTIPLE_THREAD = fsSettings["multiple_thread"];
@@ -155,6 +157,12 @@ void readParameters(const string &config_file)
         RIC.push_back(T.block<3, 3>(0, 0));
         TIC.push_back(T.block<3, 1>(0, 3));
     }
+
+    FISHEYE = fsSettings["fisheye"]; // added
+    if (FISHEYE){
+        fsSettings["fisheye_mask_name"] >> FISHEYE_MASK; //added
+        std::string mask_path = configPath + "/" + FISHEYE_MASK;
+        fisheye_mask=cv::imread(mask_path,cv::IMREAD_GRAYSCALE);}
 
     INIT_DEPTH = 5.0;
     BIAS_ACC_THRESHOLD = 0.1;
@@ -860,6 +868,18 @@ int MarginalizationInfo::globalSize(int size) const
 
 void* ThreadsConstructA(void* threadsstruct)
 {
+    if(AFFINITY){
+	    //ryu - CPU affinity
+	    unsigned long mask = 240; //(b1111 0000)
+	    if(pthread_setaffinity_np(pthread_self(),sizeof(mask),(cpu_set_t*)&mask) <0){  
+		std::cout << "setaffinity np error" << std::endl;
+	    }
+	    else {
+		if(SHOW_TMI){
+		   std::cout << "ThreadsConstructA cpu : " << sched_getcpu() << std::endl;}
+	    }
+    }
+
     ThreadsStruct* p = ((ThreadsStruct*)threadsstruct);
     for (auto it : p->sub_factors)
     {
@@ -3093,6 +3113,18 @@ double FeatureTracker::distance(cv::Point2f &pt1, cv::Point2f &pt2)
 
 map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackImage(double _cur_time, const cv::Mat &_img, const cv::Mat &_img1)
 {
+    if(AFFINITY){
+	    //ryu - CPU affinity
+	    unsigned long tmask = 240; //(b1111 0000)
+	    if(pthread_setaffinity_np(pthread_self(),sizeof(tmask),(cpu_set_t*)&tmask) <0){  
+		std::cout << "setaffinity np error" << std::endl;
+	    }
+	    else {
+		if(SHOW_TMI){
+		   std::cout << "trackImage cpu : " << sched_getcpu() << std::endl;}
+	    }
+    }
+
     TicToc t_r;
     cur_time = _cur_time;
     cur_img = _img;
@@ -3994,6 +4026,17 @@ bool Estimator::IMUAvailable(double t)
 
 void Estimator::processMeasurements()
 {
+    if(AFFINITY){
+	    //ryu - CPU affinity
+	    unsigned long mask = 240; //(b1111 0000)
+	    if(pthread_setaffinity_np(pthread_self(),sizeof(mask),(cpu_set_t*)&mask) <0){  
+		std::cout << "setaffinity np error" << std::endl;
+	    }
+	    else {
+		if(SHOW_TMI){
+		   std::cout << "processMeasuremetns cpu : " << sched_getcpu() << std::endl;}
+	    }
+    }
     while (1)
     {
         if(SHOW_TMI)
